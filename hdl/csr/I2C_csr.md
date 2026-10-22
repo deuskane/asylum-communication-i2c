@@ -37,13 +37,13 @@ I2C Configuration Register
 7-bit address of the slave. 0 : slave disabled (0 is the general call address)
 
 ## 0x3 prescaler
-I2C Clock Prescaler. SCL Frequency is CLK / (4*(prescaler+1)). In slave mode, the data setup time after a clock stretching is (prescaler+1) CLK cycles
+I2C Clock Prescaler. Master : SCL period is 4*(prescaler+1)+2 CLK cycles (the 2 cycles of synchronization of SCL extend the high phase). Slave : the data setup time after a clock stretching is (prescaler+1) CLK cycles
 
 ### [7:0] ratio
 Number of CLK cycles minus one of a quarter of SCL period
 
 ## 0x4 status
-I2C Status Register
+I2C Status Register (read without latency)
 
 ### [0:0] busy
 Master : 0 : no command in progress or pending, 1 : command in progress or pending

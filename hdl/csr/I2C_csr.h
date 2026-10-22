@@ -106,7 +106,7 @@
 
 //==================================
 // Register    : prescaler
-// Description : I2C Clock Prescaler. SCL Frequency is CLK / (4*(prescaler+1)). In slave mode, the data setup time after a clock stretching is (prescaler+1) CLK cycles
+// Description : I2C Clock Prescaler. Master : SCL period is 4*(prescaler+1)+2 CLK cycles (the 2 cycles of synchronization of SCL extend the high phase). Slave : the data setup time after a clock stretching is (prescaler+1) CLK cycles
 // Address     : 0x3
 //==================================
 #define I2C_PRESCALER 0x3
@@ -119,7 +119,7 @@
 
 //==================================
 // Register    : status
-// Description : I2C Status Register
+// Description : I2C Status Register (read without latency)
 // Address     : 0x4
 //==================================
 #define I2C_STATUS 0x4

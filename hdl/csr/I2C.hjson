@@ -134,7 +134,7 @@
 	{
             name         : "prescaler",
             address      : "x3",
-            desc         : "I2C Clock Prescaler. SCL Frequency is CLK / (4*(prescaler+1)). In slave mode, the data setup time after a clock stretching is (prescaler+1) CLK cycles"
+            desc         : "I2C Clock Prescaler. Master : SCL period is 4*(prescaler+1)+2 CLK cycles (the 2 cycles of synchronization of SCL extend the high phase). Slave : the data setup time after a clock stretching is (prescaler+1) CLK cycles"
             swaccess     : "rw",
             hwaccess     : "ro",
             hwtype       : "reg",
@@ -153,9 +153,10 @@
 	{
             name         : "status",
             address      : "x4",
-            desc         : "I2C Status Register",
+            desc         : "I2C Status Register (read without latency)",
             swaccess     : "ro",
             hwaccess     : "wo",
+            hwtype       : "ext",
 
             fields: [
                 {

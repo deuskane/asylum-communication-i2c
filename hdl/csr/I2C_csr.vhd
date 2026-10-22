@@ -446,7 +446,7 @@ begin  -- architecture rtl
   generate
   --==================================
   -- Register    : prescaler
-  -- Description : I2C Clock Prescaler. SCL Frequency is CLK / (4*(prescaler+1)). In slave mode, the data setup time after a clock stretching is (prescaler+1) CLK cycles
+  -- Description : I2C Clock Prescaler. Master : SCL period is 4*(prescaler+1)+2 CLK cycles (the 2 cycles of synchronization of SCL extend the high phase). Slave : the data setup time after a clock stretching is (prescaler+1) CLK cycles
   -- Address     : 0x3
   -- Width       : 8
   -- Sw Access   : rw
@@ -519,12 +519,12 @@ begin  -- architecture rtl
   generate
   --==================================
   -- Register    : status
-  -- Description : I2C Status Register
+  -- Description : I2C Status Register (read without latency)
   -- Address     : 0x4
   -- Width       : 6
   -- Sw Access   : ro
   -- Hw Access   : wo
-  -- Hw Type     : reg
+  -- Hw Type     : ext
   --==================================
   --==================================
   -- Field       : busy
@@ -586,11 +586,9 @@ begin  -- architecture rtl
     status_wdata_hw(4 downto 4) <= hw2sw_i.status.slave_read; -- slave_read
     status_wdata_hw(5 downto 5) <= hw2sw_i.status.rx_empty; -- rx_empty
 
-    ins_status : csr_reg
+    ins_status : csr_ext
       generic map
         (WIDTH         => 6
-        ,INIT          => INIT_status
-        ,MODEL         => "ro"
         )
       port map
         (clk_i         => clk_i
