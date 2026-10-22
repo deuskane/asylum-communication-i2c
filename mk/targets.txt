@@ -1,2 +1,3 @@
-default : Default Target
+default   : Default Target
+sim_basic : Simulation of sbi_I2C with the UVVM I2C and SBI BFM
 

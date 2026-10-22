@@ -53,6 +53,15 @@ filesets:
       - asylum:utils:pkg
       - asylum:target:techmap
 
+  #---------------------------------------
+  sim_basic:
+  #---------------------------------------
+    files        :
+      - sim/basic/tb_I2C.vhd
+    file_type    : vhdlSource-2008
+    depend       :
+      - bitvis:verification:uvvm
+
 #=========================================
 targets:
 #=========================================
@@ -67,3 +76,22 @@ targets:
     default_tool    : ghdl
     generate        :
       - gen_csr
+
+  #---------------------------------------
+  sim_basic:
+  #---------------------------------------
+    << : *default
+    description     : Simulation of sbi_I2C with the UVVM I2C and SBI BFM
+    filesets_append :
+      - sim_basic
+    toplevel        : tb_I2C
+    default_tool    : ghdl
+    tools :
+      ghdl :
+        analyze_options :
+          - "$(GHDL_ANALYZE_OPTION)"
+          - "-Wall"
+          - "-frelaxed"
+        run_options     :
+          - "$(GHDL_RUN_OPTION)"
+          - "--ieee-asserts=disable"
