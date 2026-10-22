@@ -42,8 +42,8 @@
 -- still low (clock stretching of a slave, synchronization of scl_i), the
 -- quarter counter is reloaded : the high phase lasts 2 quarters from the
 -- time SCL is seen high.
--- f_scl = f_clk / (4*(ratio+1)), minus the 2 cycles of synchronization of
--- scl_i added to each high phase.
+-- SCL period = 4*(ratio+1)+2 clock cycles : the 2 cycles of synchronization
+-- of scl_i extend each high phase (plus the rise time of SCL on a real bus).
 -------------------------------------------------------------------------------
 -- Copyright (c) 2026
 -------------------------------------------------------------------------------
