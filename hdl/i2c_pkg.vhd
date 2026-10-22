@@ -30,6 +30,57 @@ package i2c_pkg is
   constant I2C_OP_READ_NACK : std_logic_vector(2-1 downto 0) := "11"; -- Read a byte, answer NACK (last byte)
 
 -- [COMPONENT_INSERT][BEGIN]
+component i2c_core is
+  generic (
+    PRESCALER_WIDTH      : natural := 8;
+    MASTER_ENABLE        : boolean := true;                   -- Implement the master
+    SLAVE_ENABLE         : boolean := true                    -- Implement the slave
+    );
+  port (
+    -- Clock & Reset
+    clk_i                : in  std_logic;
+    arst_b_i             : in  std_logic;
+
+    -- Data From AXI Stream To I2C
+    -- (master : bytes of the WRITE commands, slave : bytes read by the master)
+    tx_tvalid_i          : in  std_logic;
+    tx_tready_o          : out std_logic;
+    tx_tdata_i           : in  std_logic_vector(8-1 downto 0);
+
+    -- Data From I2C To AXI Stream
+    -- (master : bytes of the READ commands, slave : bytes written by the master)
+    rx_tvalid_o          : out std_logic;
+    rx_tready_i          : in  std_logic;
+    rx_tdata_o           : out std_logic_vector(8-1 downto 0);
+
+    -- Master Command
+    cmd_tvalid_i         : in  std_logic;
+    cmd_tready_o         : out std_logic;
+    cmd_start_i          : in  std_logic;                     -- START (or repeated START) before the byte
+    cmd_stop_i           : in  std_logic;                     -- STOP after the byte
+    cmd_op_i             : in  std_logic_vector(2-1 downto 0);-- Byte operation (I2C_OP_*)
+
+    -- Configuration
+    cfg_prescaler_ratio_i: in  std_logic_vector(PRESCALER_WIDTH-1 downto 0); -- Quarter of SCL period minus one, in clock cycles
+    cfg_slave_addr_i     : in  std_logic_vector(7-1 downto 0);-- 7-bit address of the slave, 0 : slave disabled
+
+    -- Status
+    sts_busy_o           : out std_logic;                     -- Master : command in progress or pending
+    sts_nack_o           : out std_logic;                     -- Master : NACK received since the last START on a released bus
+    sts_bus_busy_o       : out std_logic;                     -- START detected and no STOP since
+    sts_slave_addressed_o: out std_logic;                     -- Slave  : address acknowledged, until the next STOP or START
+    sts_slave_read_o     : out std_logic;                     -- Slave  : R/W bit of the last acknowledged address
+
+    -- I2C Interface (open drain)
+    scl_i                : in  std_logic;
+    scl_o                : out std_logic;
+    scl_oe_o             : out std_logic;
+    sda_i                : in  std_logic;
+    sda_o                : out std_logic;
+    sda_oe_o             : out std_logic
+    );
+end component i2c_core;
+
 component i2c_master is
   generic (
     PRESCALER_WIDTH      : natural := 8
