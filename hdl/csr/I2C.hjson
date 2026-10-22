@@ -1,0 +1,194 @@
+{
+    name      : "I2C",
+    width     : 8,
+    desc      : "CSR for I2C"
+    interface : "sbi"
+
+    parameters : [
+    	{
+	    name         : "USER_DEFINE_PRESCALER"
+	    desc         : "Parameters to enable the User define Prescaler"
+	    type         : "boolean"
+	}
+    	{
+	    name         : "PRESCALER_RATIO"
+	    desc         : "Default value for prescaler ratio"
+	    type         : "std_logic_vector(7 downto 0)"
+	}
+	{
+	    name         : "MASTER_ENABLE"
+	    desc         : "Master implemented (command FIFO present)"
+	    type         : "boolean"
+	}
+	{
+	    name         : "DEPTH_TX"
+	    desc         : "Depth of FIFO TX (SW2HW)"
+	    type         : "natural"
+	}
+	{
+	    name         : "DEPTH_RX"
+	    desc         : "Depth of FIFO RX (HW2SW)"
+	    type         : "natural"
+	}
+	{
+	    name         : "DEPTH_CMD"
+	    desc         : "Depth of FIFO Command (SW2HW)"
+	    type         : "natural"
+	}
+    ]
+
+    registers : [
+        {
+            name         : "data",
+            address      : "x0",
+            desc         : "Write : byte to transmit (master write or slave read), Read : byte received (master read or slave write)",
+            swaccess     : "rw",
+            hwaccess     : "rw",
+            hwtype       : "fifo",
+
+            params: {
+                BLOCKING_READ  : "True",
+                BLOCKING_WRITE : "True",
+                DEPTH_SW2HW    : "DEPTH_TX"
+                DEPTH_HW2SW    : "DEPTH_RX"
+            }
+
+            fields: [
+                {
+                    name: "value",
+                    bits: "7:0",
+                    desc: "Data TX or Data RX"
+                },
+            ]
+        },
+
+        {
+            name         : "cmd",
+            address      : "x1",
+            desc         : "Master Command FIFO. Each command is executed in this order : START (if start), byte (if op), STOP (if stop)",
+            swaccess     : "wo",
+            hwaccess     : "ro",
+            hwtype       : "fifo",
+            enable       : "MASTER_ENABLE",
+
+            params: {
+                BLOCKING_READ  : "True",
+                BLOCKING_WRITE : "True",
+                DEPTH_SW2HW    : "DEPTH_CMD"
+            }
+
+            fields: [
+                {
+                    name: "start",
+                    bits: "0",
+                    desc: "Generate a START condition (a repeated START if the master already owns the bus) before the byte. A START is always generated if the master does not own the bus and op is not NONE"
+                    enum: [
+                        {value:"0", name:"DISABLE",desc:"no START"},
+                        {value:"1", name:"ENABLE" ,desc:"START or repeated START before the byte"},
+                    ]
+                },
+                {
+                    name: "stop",
+                    bits: "1",
+                    desc: "Generate a STOP condition after the byte (ignored if the master does not own the bus)"
+                    enum: [
+                        {value:"0", name:"DISABLE",desc:"no STOP, the master keeps the bus"},
+                        {value:"1", name:"ENABLE" ,desc:"STOP after the byte, the bus is released"},
+                    ]
+                },
+                {
+                    name: "op",
+                    bits: "3:2",
+                    desc: "Byte operation"
+                    enum: [
+                        {value:"0", name:"NONE"     ,desc:"no byte (START and/or STOP only)"},
+                        {value:"1", name:"WRITE"    ,desc:"write a byte popped from the TX FIFO, the acknowledge of the slave updates status.nack"},
+                        {value:"2", name:"READ_ACK" ,desc:"read a byte pushed into the RX FIFO, answer ACK (more bytes to read)"},
+                        {value:"3", name:"READ_NACK",desc:"read a byte pushed into the RX FIFO, answer NACK (last byte to read)"},
+                    ]
+                },
+            ]
+        },
+
+	{
+            name         : "cfg",
+            address      : "x2",
+            desc         : "I2C Configuration Register",
+            swaccess     : "rw",
+            hwaccess     : "ro",
+
+            fields: [
+                {
+                    name: "enable",
+                    bits: "0",
+                    desc: "0 : I2C is disabled (held in reset, SCL and SDA released), 1 : I2C is enabled"
+                },
+                {
+                    name: "slave_addr",
+                    bits: "7:1",
+                    desc: "7-bit address of the slave. 0 : slave disabled (0 is the general call address)"
+                },
+            ]
+        },
+
+	{
+            name         : "prescaler",
+            address      : "x3",
+            desc         : "I2C Clock Prescaler. SCL Frequency is CLK / (4*(prescaler+1)). In slave mode, the data setup time after a clock stretching is (prescaler+1) CLK cycles"
+            swaccess     : "rw",
+            hwaccess     : "ro",
+            hwtype       : "reg",
+            enable       : "USER_DEFINE_PRESCALER",
+
+            fields: [
+                {
+                    name: "ratio",
+                    bits: "7:0",
+                    desc: "Number of CLK cycles minus one of a quarter of SCL period"
+                    expr: "PRESCALER_RATIO"
+                },
+            ]
+        },
+
+	{
+            name         : "status",
+            address      : "x4",
+            desc         : "I2C Status Register",
+            swaccess     : "ro",
+            hwaccess     : "wo",
+
+            fields: [
+                {
+                    name: "busy",
+                    bits: "0",
+                    desc: "Master : 0 : no command in progress or pending, 1 : command in progress or pending"
+                },
+                {
+                    name: "nack",
+                    bits: "1",
+                    desc: "Master : 1 : a NACK was received on a written byte since the last START generated from a released bus"
+                },
+                {
+                    name: "bus_busy",
+                    bits: "2",
+                    desc: "0 : bus free, 1 : START detected and no STOP since"
+                },
+                {
+                    name: "slave_addressed",
+                    bits: "3",
+                    desc: "Slave : 1 : the slave address was acknowledged, until the next STOP or START"
+                },
+                {
+                    name: "slave_read",
+                    bits: "4",
+                    desc: "Slave : direction of the last acknowledged address. 0 : the master writes, 1 : the master reads"
+                },
+                {
+                    name: "rx_empty",
+                    bits: "5",
+                    desc: "0 : at least one byte can be read in data, 1 : RX FIFO empty (a read of data waits for a byte)"
+                },
+            ]
+        },
+]
+}
