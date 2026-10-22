@@ -245,12 +245,14 @@ begin
   -----------------------------------------------------------------------------
   -- SCL monitor
   -----------------------------------------------------------------------------
-  p_scl_monitor : process (i2c_if.scl, scl_mon_clear)
+  p_scl_monitor : process
     variable v_rise       : time    := 0 ns;
     variable v_rise_valid : boolean := false;
     variable v_period_min : time    := 1 sec;
     variable v_high_min   : time    := 1 sec;
   begin
+    wait on i2c_if.scl, scl_mon_clear;
+
     if scl_mon_clear'event
     then
       v_rise_valid := false;
@@ -321,14 +323,14 @@ begin
       check_reg(I2C_CFG      , v_cfg, msg & " : read back cfg");
     end procedure;
 
-    -- Master command (the cmd register has 4 bits)
+    -- Master command : op & stop & start
     procedure command(start : boolean; stop : boolean; op : std_logic_vector(1 downto 0); msg : string) is
-      variable v_cmd : std_logic_vector(3 downto 0);
+      variable v_start : std_logic_vector(0 downto 0) := I2C_CMD_START_DISABLE;
+      variable v_stop  : std_logic_vector(0 downto 0) := I2C_CMD_STOP_DISABLE;
     begin
-      v_cmd := op & "00";
-      if start then v_cmd := v_cmd or I2C_CMD_START_ENABLE_RAW; end if;
-      if stop  then v_cmd := v_cmd or I2C_CMD_STOP_ENABLE_RAW;  end if;
-      write_reg(I2C_CMD, "0000" & v_cmd, msg);
+      if start then v_start := I2C_CMD_START_ENABLE; end if;
+      if stop  then v_stop  := I2C_CMD_STOP_ENABLE;  end if;
+      write_reg(I2C_CMD, "0000" & op & v_stop & v_start, msg);
     end procedure;
 
     -- DUT master : START, address + W, bytes, STOP (if stop)
