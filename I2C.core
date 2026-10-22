@@ -62,6 +62,16 @@ filesets:
     depend       :
       - bitvis:verification:uvvm
 
+  #---------------------------------------
+  # Lint Files (pre_run hook of lint_ghdl_synth_*)
+  #---------------------------------------
+  files_lint:
+    files:
+      - syn/ghdl/sbi_I2C_synth_top.vhd
+      - syn/ghdl/ghdl_synth.sh : {file_type : user, copyto : ghdl_synth.sh}
+      - syn/ghdl/ghdl_synth.mk : {file_type : user, copyto : ghdl_synth.mk}
+    file_type : vhdlSource-2008
+
 #=========================================
 targets:
 #=========================================
@@ -76,6 +86,69 @@ targets:
     default_tool    : ghdl
     generate        :
       - gen_csr
+
+  #---------------------------------------
+  # Lint : -Wall analysis and elaboration (empty simulation)
+  #---------------------------------------
+  lint_ghdl : &lint_ghdl
+    << : *default
+    description     : Lint with GHDL (-Wall analysis and elaboration of sbi_I2C_synth_top)
+    toplevel        : sbi_I2C_synth_top
+    filesets_append : [files_lint]
+    default_tool    : ghdl
+    tools :
+      ghdl :
+        analyze_options : ["-Wall"]
+
+  #---------------------------------------
+  # Synthesis check : -Wall analysis, ghdl --synth -Wall and elaboration
+  # (no simulation) of sbi_I2C_synth_top with the generics of the target.
+  # The pre_run hook adds syn/ghdl/ghdl_synth.mk to the edalize Makefile.
+  # FuseSoC merges tools in depth : analyze_options comes from lint_ghdl.
+  #---------------------------------------
+  lint_ghdl_synth_default : &lint_ghdl_synth
+    << : *lint_ghdl
+    description     : Synthesis check of sbi_I2C_synth_top, default generics
+    tools :
+      ghdl :
+        run_options     : ["--no-run"]
+    hooks :
+      pre_run : [ghdl_synth]
+
+  #---------------------------------------
+  lint_ghdl_synth_sim_basic :
+  #---------------------------------------
+    << : *lint_ghdl_synth
+    description     : Synthesis check of sbi_I2C_synth_top, generics of sim_basic
+    parameters      :
+      - DEPTH_CMD=4
+      - DEPTH_TX=8
+      - DEPTH_RX=8
+
+  #---------------------------------------
+  lint_ghdl_synth_master_only :
+  #---------------------------------------
+    << : *lint_ghdl_synth
+    description     : Synthesis check of sbi_I2C_synth_top, master only
+    parameters      :
+      - SLAVE_ENABLE=false
+
+  #---------------------------------------
+  lint_ghdl_synth_slave_only :
+  #---------------------------------------
+    << : *lint_ghdl_synth
+    description     : Synthesis check of sbi_I2C_synth_top, slave only (no cmd register)
+    parameters      :
+      - MASTER_ENABLE=false
+
+  #---------------------------------------
+  lint_ghdl_synth_fixed_prescaler :
+  #---------------------------------------
+    << : *lint_ghdl_synth
+    description     : Synthesis check of sbi_I2C_synth_top, fixed prescaler
+    parameters      :
+      - USER_DEFINE_PRESCALER=false
+      - PRESCALER_RATIO=00011000
 
   #---------------------------------------
   sim_basic:
@@ -95,3 +168,62 @@ targets:
         run_options     :
           - "$(GHDL_RUN_OPTION)"
           - "--ieee-asserts=disable"
+
+#=========================================
+scripts:
+#=========================================
+
+  #---------------------------------------
+  # pre_run hook of lint_ghdl_synth_* (cwd = work_root)
+  #---------------------------------------
+  ghdl_synth :
+    cmd : [bash, ghdl_synth.sh]
+
+#=========================================
+parameters :
+#=========================================
+
+  #---------------------------------------
+  # Generics of sbi_I2C_synth_top (lint_ghdl_synth_*)
+  #---------------------------------------
+  USER_DEFINE_PRESCALER :
+    description : true, prescaler register writable by software ; false, ratio fixed to PRESCALER_RATIO
+    datatype    : bool
+    default     : true
+    paramtype   : generic
+
+  PRESCALER_RATIO :
+    description : Reset / fixed value of the prescaler ratio (8-bit string)
+    datatype    : str
+    default     : "01111100"
+    paramtype   : generic
+
+  MASTER_ENABLE :
+    description : true, master implemented (and cmd register)
+    datatype    : bool
+    default     : true
+    paramtype   : generic
+
+  SLAVE_ENABLE :
+    description : true, slave implemented
+    datatype    : bool
+    default     : true
+    paramtype   : generic
+
+  DEPTH_CMD :
+    description : Depth of the command FIFO (0 = no FIFO)
+    datatype    : int
+    default     : 0
+    paramtype   : generic
+
+  DEPTH_TX :
+    description : Depth of the TX FIFO (0 = no FIFO)
+    datatype    : int
+    default     : 0
+    paramtype   : generic
+
+  DEPTH_RX :
+    description : Depth of the RX FIFO (0 = no FIFO)
+    datatype    : int
+    default     : 0
+    paramtype   : generic
