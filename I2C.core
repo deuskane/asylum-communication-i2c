@@ -1,0 +1,69 @@
+CAPI=2:
+
+#-----------------------------------------------------------------------------
+# Title      : I2C Core file
+# Project    : Asylum
+#-----------------------------------------------------------------------------
+# File       : I2C.core
+# Author     : mrosiere
+#-----------------------------------------------------------------------------
+# Description: I2C master / slave with CSR access over the SBI bus
+#-----------------------------------------------------------------------------
+# Copyright (c) 2026
+#-----------------------------------------------------------------------------
+# Revisions  :
+# Date        Version  Author   Description
+# 2026-10-22  1.0.0    mrosiere First Release
+#-----------------------------------------------------------------------------
+
+name        : asylum:communication:I2C:1.0.0
+description : I2C Master / Slave Module
+
+#=========================================
+generate:
+#=========================================
+
+  #---------------------------------------
+  gen_csr:
+  #---------------------------------------
+    generator : regtool
+    parameters:
+      file         : hdl/csr/I2C.hjson
+      name         : I2C
+      copy         : hdl/csr
+      logical_name : asylum
+
+#=========================================
+filesets:
+#=========================================
+
+  #---------------------------------------
+  hdl:
+  #---------------------------------------
+    files        :
+      - hdl/i2c_pkg.vhd
+      - hdl/i2c_master.vhd
+      - hdl/i2c_slave.vhd
+      - hdl/i2c_core.vhd
+      - hdl/sbi_I2C.vhd
+    file_type    : vhdlSource
+    logical_name : asylum
+    depend       :
+      - asylum:utils:generators
+      - asylum:utils:pkg
+      - asylum:target:techmap
+
+#=========================================
+targets:
+#=========================================
+
+  #---------------------------------------
+  default: &default
+  #---------------------------------------
+    description     : Default Target
+    filesets        :
+      - hdl
+    toplevel        : sbi_I2C
+    default_tool    : ghdl
+    generate        :
+      - gen_csr

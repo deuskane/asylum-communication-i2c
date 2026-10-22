@@ -30,6 +30,40 @@ package i2c_pkg is
   constant I2C_OP_READ_NACK : std_logic_vector(2-1 downto 0) := "11"; -- Read a byte, answer NACK (last byte)
 
 -- [COMPONENT_INSERT][BEGIN]
+component sbi_I2C is
+  generic(
+    NAME                  : string  := "";
+    USER_DEFINE_PRESCALER : boolean := true;                         -- Prescaler register writable by software
+    PRESCALER_RATIO       : std_logic_vector(8-1 downto 0) := x"7C"; -- Default value for prescaler ratio (100 kHz with a 50 MHz clock)
+    MASTER_ENABLE         : boolean := true;                         -- Implement the master (and the cmd register)
+    SLAVE_ENABLE          : boolean := true;                         -- Implement the slave
+    DEPTH_CMD             : natural := 0;
+    DEPTH_TX              : natural := 0;
+    DEPTH_RX              : natural := 0;
+
+    FILENAME_CMD          : string  := "dump_i2c_cmd.txt";
+    FILENAME_TX           : string  := "dump_i2c_tx.txt";
+    FILENAME_RX           : string  := "dump_i2c_rx.txt"
+    );
+  port   (
+    clk_i            : in  std_logic;
+    arst_b_i         : in  std_logic; -- asynchronous reset
+
+    -- Bus
+    sbi_ini_i        : in  sbi_ini_t;
+    sbi_tgt_o        : out sbi_tgt_t;
+
+    -- I2C Interface (open drain : xx_o is always 0, xx_oe_o = 1 pulls the line low)
+    scl_i            : in  std_logic;
+    scl_o            : out std_logic;
+    scl_oe_o         : out std_logic;
+    sda_i            : in  std_logic;
+    sda_o            : out std_logic;
+    sda_oe_o         : out std_logic
+    );
+
+end component sbi_I2C;
+
 component i2c_core is
   generic (
     PRESCALER_WIDTH      : natural := 8;
