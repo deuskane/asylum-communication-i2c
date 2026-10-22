@@ -243,6 +243,7 @@ Notes:
 | File | DUT | Description |
 |------|-----|-------------|
 | [sim/basic/tb_I2C.vhd](sim/basic/tb_I2C.vhd) | `sbi_I2C` | UVVM testbench, self-checking, one scenario per simulation selected by the generic `TEST` (one `sim_<TEST>` target per scenario, see [Targets](#targets)). The CSR are accessed with the SBI BFM (`bitvis_vip_sbi`), the I2C bus (open drain, pull-up) is driven by the UVVM I2C BFM (`bitvis_vip_i2c`) in a dedicated process. A process stretches SCL on request and a monitor measures the minimum SCL period and high phase |
+| [sim/multi/tb_I2C_multi.vhd](sim/multi/tb_I2C_multi.vhd) | `NB_SLAVE+1` x `sbi_I2C` | UVVM testbench, self-checking: `I2C0` master (`SLAVE_ENABLE = false`) and `I2C1` to `I2C<NB_SLAVE>` slaves (`MASTER_ENABLE = false`, addresses `0x10 + k`) on the same I2C bus, CSR of all the instances accessed by one SBI BFM (the 2 MSB of the SBI address select the instance). The master writes to each slave (only the addressed slave receives the bytes), reads from each slave, writes to `I2C1` + repeated START + reads from `I2C<NB_SLAVE>` (address re-evaluated by the slaves on the repeated START), reads from a slave with an empty TX FIFO (clock stretching by the slave until the software writes the bytes), writes to an absent address (NACK, no slave addressed) |
 
 The slave clock stretching on a full RX FIFO is not checked: the UVVM I2C BFM master samples the acknowledge a quarter of bit after releasing SCL, without waiting for SCL high.
 
@@ -266,6 +267,7 @@ The slave clock stretching on a full RX FIFO is not checked: the UVVM I2C BFM ma
 | `sim_slave_wrong_address` | `tb_I2C` | NACK on an other address |
 | `sim_slave_disabled` | `tb_I2C` | NACK when `cfg.slave_addr = 0` |
 | `sim_disabled` | `tb_I2C` | NACK and pads released when `cfg.enable = 0` |
+| `sim_multi_slave` | `tb_I2C_multi` | One master and 3 slaves `sbi_I2C` on the same bus (`NB_SLAVE=3`) |
 | `lint_ghdl` | `sbi_I2C_synth_top` | Lint: GHDL `-Wall` analysis and elaboration (empty simulation) of `sbi_I2C` in a wrapper with flat SBI ports (`syn/ghdl/sbi_I2C_synth_top.vhd`) |
 | `lint_ghdl_synth_default` | `sbi_I2C_synth_top` | Synthesis check (see below), default generics of `sbi_I2C` |
 | `lint_ghdl_synth_sim` | `sbi_I2C_synth_top` | Synthesis check, depths of the `sim_*` targets: `DEPTH_CMD = 4`, `DEPTH_TX = 8`, `DEPTH_RX = 8` |
@@ -382,7 +384,8 @@ asylum-communication-i2c/
 │       ├── I2C_csr.md      # Generated
 │       └── I2C_csr.h       # Generated
 ├── sim/
-│   └── basic/              # tb_I2C.vhd (UVVM, SBI and I2C BFM, one scenario per sim_* target)
+│   ├── basic/              # tb_I2C.vhd (UVVM, SBI and I2C BFM, one scenario per sim_* target)
+│   └── multi/              # tb_I2C_multi.vhd (one master and NB_SLAVE slaves sbi_I2C)
 └── syn/ghdl/
     ├── sbi_I2C_synth_top.vhd  # Lint / synthesis check top (sbi_I2C, flat SBI ports)
     ├── ghdl_synth.sh       # pre_run hook of lint_ghdl_synth_*: includes ghdl_synth.mk in the edalize Makefile
@@ -396,4 +399,4 @@ asylum-communication-i2c/
 | `asylum:utils:generators` | `hdl` | regtool generator and CSR building blocks (`csr_reg`, `csr_ext`, `csr_fifo`). Needs the support of registers sharing an address (branch `regtool_shared_address`, not in 2.7.1) |
 | `asylum:utils:pkg` | `hdl` | Common packages (`sbi_pkg`, ...) |
 | `asylum:target:techmap` | `hdl` | Technology mapping cells (`sync2dffrn` synchronizers of SCL and SDA) |
-| `bitvis:verification:uvvm` | `sim_basic` | UVVM utility library, SBI VIP and I2C VIP (`bitvis_vip_i2c`) |
+| `bitvis:verification:uvvm` | `sim_basic`, `sim_multi` | UVVM utility library, SBI VIP and I2C VIP (`bitvis_vip_i2c`) |

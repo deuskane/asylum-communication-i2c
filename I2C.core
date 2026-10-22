@@ -15,7 +15,7 @@ CAPI=2:
 # Date        Version  Author   Description
 # 2026-10-22  1.0.0    mrosiere First Release
 #                               One target per verification scenario
-#                               (sim_<scenario>)
+#                               (sim_<scenario>), sim_multi_slave
 #-----------------------------------------------------------------------------
 
 name        : asylum:communication:I2C:1.0.0
@@ -60,6 +60,15 @@ filesets:
   #---------------------------------------
     files        :
       - sim/basic/tb_I2C.vhd
+    file_type    : vhdlSource-2008
+    depend       :
+      - bitvis:verification:uvvm
+
+  #---------------------------------------
+  sim_multi:
+  #---------------------------------------
+    files        :
+      - sim/multi/tb_I2C_multi.vhd
     file_type    : vhdlSource-2008
     depend       :
       - bitvis:verification:uvvm
@@ -286,6 +295,18 @@ targets:
     parameters      :
       - TEST=disabled
 
+  #---------------------------------------
+  # Simulation : tb_I2C_multi, one master and NB_SLAVE slaves
+  #---------------------------------------
+  sim_multi_slave:
+    << : *default_sim
+    description     : One master and 3 slaves sbi_I2C on the same bus
+    filesets_append :
+      - sim_multi
+    toplevel        : tb_I2C_multi
+    parameters      :
+      - NB_SLAVE=3
+
 #=========================================
 scripts:
 #=========================================
@@ -307,6 +328,12 @@ parameters :
     description : Scenario of tb_I2C (see sim/basic/tb_I2C.vhd)
     datatype    : str
     default     : master_write
+    paramtype   : generic
+
+  NB_SLAVE :
+    description : Number of slave instances of tb_I2C_multi (1 to 3)
+    datatype    : int
+    default     : 3
     paramtype   : generic
 
   #---------------------------------------

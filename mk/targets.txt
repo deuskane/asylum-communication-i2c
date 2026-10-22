@@ -13,6 +13,7 @@ sim_master_read                 : DUT master reads from the BFM slave
 sim_master_stretch              : DUT master write with SCL stretched by the bench
 sim_master_write                : DUT master writes to the BFM slave, SCL period (prescaler 4)
 sim_master_write_read           : DUT master write + repeated START + read (register read)
+sim_multi_slave                 : One master and 3 slaves sbi_I2C on the same bus
 sim_reset_values                : Reset values of the registers
 sim_slave_disabled              : BFM master addresses a disabled slave (NACK)
 sim_slave_read                  : BFM master reads from the DUT slave
