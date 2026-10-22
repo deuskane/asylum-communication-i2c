@@ -153,8 +153,8 @@
 	{
             name         : "status",
             address      : "x4",
-            desc         : "I2C Status Register (read without latency)",
-            swaccess     : "ro",
+            desc         : "I2C Status Register, read only (writes are ignored), read without latency",
+            swaccess     : "rw",
             hwaccess     : "wo",
             hwtype       : "ext",
 

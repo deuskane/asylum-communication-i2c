@@ -43,7 +43,7 @@ I2C Clock Prescaler. Master : SCL period is 4*(prescaler+1)+2 CLK cycles (the 2 
 Number of CLK cycles minus one of a quarter of SCL period
 
 ## 0x4 status
-I2C Status Register (read without latency)
+I2C Status Register, read only (writes are ignored), read without latency
 
 ### [0:0] busy
 Master : 0 : no command in progress or pending, 1 : command in progress or pending

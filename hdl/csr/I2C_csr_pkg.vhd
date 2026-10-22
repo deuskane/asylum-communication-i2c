@@ -189,10 +189,10 @@ constant I2C_CMD_OP_READ_NACK_RAW : std_logic_vector(4-1 downto 0) := "1100";
 
   --==================================
   -- Register    : status
-  -- Description : I2C Status Register (read without latency)
+  -- Description : I2C Status Register, read only (writes are ignored), read without latency
   -- Address     : 0x4
   -- Width       : 6
-  -- Sw Access   : ro
+  -- Sw Access   : rw
   -- Hw Access   : wo
   -- Hw Type     : ext
   --==================================
@@ -200,6 +200,7 @@ constant I2C_CMD_OP_READ_NACK_RAW : std_logic_vector(4-1 downto 0) := "1100";
 
   type I2C_status_sw2hw_t is record
     re : std_logic;
+    we : std_logic;
   end record I2C_status_sw2hw_t;
 
   type I2C_status_hw2sw_t is record

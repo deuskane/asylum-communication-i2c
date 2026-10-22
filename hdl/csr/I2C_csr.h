@@ -119,7 +119,7 @@
 
 //==================================
 // Register    : status
-// Description : I2C Status Register (read without latency)
+// Description : I2C Status Register, read only (writes are ignored), read without latency
 // Address     : 0x4
 //==================================
 #define I2C_STATUS 0x4

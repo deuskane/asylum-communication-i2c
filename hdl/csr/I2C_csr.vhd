@@ -519,10 +519,10 @@ begin  -- architecture rtl
   generate
   --==================================
   -- Register    : status
-  -- Description : I2C Status Register (read without latency)
+  -- Description : I2C Status Register, read only (writes are ignored), read without latency
   -- Address     : 0x4
   -- Width       : 6
-  -- Sw Access   : ro
+  -- Sw Access   : rw
   -- Hw Access   : wo
   -- Hw Type     : ext
   --==================================
@@ -574,11 +574,15 @@ begin  -- architecture rtl
       5 => status_rdata_sw(5), -- rx_empty(0)
       others => '0');
 
-    status_wcs      <= '0';
-    status_we       <= '0';
-    status_wbusy    <= '0';
-    status_wdata    <= (others=>'0');
-    status_wdata_sw <= (others=>'0');
+    status_wcs     <= '1' when       (sig_waddr = I2C_STATUS)   else '0';
+    status_we      <= sig_wcs and sig_we and status_wcs;
+    status_wdata   <= sig_wdata;
+    status_wdata_sw(0 downto 0) <= status_wdata(0 downto 0); -- busy
+    status_wdata_sw(1 downto 1) <= status_wdata(1 downto 1); -- nack
+    status_wdata_sw(2 downto 2) <= status_wdata(2 downto 2); -- bus_busy
+    status_wdata_sw(3 downto 3) <= status_wdata(3 downto 3); -- slave_addressed
+    status_wdata_sw(4 downto 4) <= status_wdata(4 downto 4); -- slave_read
+    status_wdata_sw(5 downto 5) <= status_wdata(5 downto 5); -- rx_empty
     status_wdata_hw(0 downto 0) <= hw2sw_i.status.busy; -- busy
     status_wdata_hw(1 downto 1) <= hw2sw_i.status.nack; -- nack
     status_wdata_hw(2 downto 2) <= hw2sw_i.status.bus_busy; -- bus_busy
@@ -603,7 +607,7 @@ begin  -- architecture rtl
         ,hw_rd_o       => open
         ,hw_we_i       => hw2sw_i.status.we
         ,hw_sw_re_o    => sw2hw_o.status.re
-        ,hw_sw_we_o      => open
+        ,hw_sw_we_o    => sw2hw_o.status.we
         );
 
   end generate gen_status;
@@ -616,6 +620,7 @@ begin  -- architecture rtl
     status_wcs      <= '0';
     status_wbusy    <= '0';
     sw2hw_o.status.re <= '0';
+    sw2hw_o.status.we <= '0';
   end generate gen_status_b;
 
   sig_wbusy <= 
