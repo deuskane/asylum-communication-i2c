@@ -8,17 +8,30 @@
 -- Description: UVVM self-checking testbench of sbi_I2C. The CSR are accessed
 --              with the SBI BFM, the I2C bus (open drain, pull-up) is driven
 --              by the UVVM I2C BFM (bitvis_vip_i2c) in a dedicated process.
---              * DUT master / BFM slave : write, read, write + repeated START
---                + read, NACK of an absent slave, clock stretching by the
---                bench, SCL period and high phase for 2 prescalers
---              * BFM master / DUT slave : write, read, read with an empty TX
---                FIFO (clock stretching by the DUT), write + repeated START +
---                read, wrong address, slave disabled, I2C disabled
---              Plus : reset values of the registers.
+--              One scenario per simulation, selected by the generic TEST
+--              (one FuseSoC target sim_<TEST> per scenario) :
+--              * reset_values        : reset values of the registers
+--              * master_write        : DUT master writes to the BFM slave,
+--                                      SCL period and high phase (ratio 4)
+--              * master_read         : DUT master reads from the BFM slave
+--              * master_write_read   : write + repeated START + read
+--              * master_nack         : write to an absent slave (NACK),
+--                                      NACK status cleared by a new transfer
+--              * master_stretch      : SCL stretched by the bench
+--              * master_prescaler    : SCL period and high phase (ratio 9)
+--              * slave_write         : BFM master writes to the DUT slave
+--              * slave_read          : BFM master reads from the DUT slave
+--              * slave_stretch       : BFM master reads, TX FIFO empty :
+--                                      clock stretching by the DUT
+--              * slave_write_read    : write + repeated START + read
+--              * slave_wrong_address : NACK on an other address
+--              * slave_disabled      : NACK if slave address is 0
+--              * disabled            : NACK and pads released if cfg.enable = 0
 -------------------------------------------------------------------------------
 -- Revisions  :
 -- Date        Version  Author   Description
 -- 2026-10-22  1.0      mrosiere Created
+-- 2026-10-22  1.1      mrosiere One scenario per simulation (generic TEST)
 -------------------------------------------------------------------------------
 
 library ieee;
@@ -40,6 +53,9 @@ use     asylum.i2c_pkg.all;
 use     asylum.I2C_csr_pkg.all;
 
 entity tb_I2C is
+  generic (
+    TEST : string := "master_write"                   -- Scenario (see the description)
+    );
 end tb_I2C;
 
 architecture sim of tb_I2C is
@@ -406,6 +422,163 @@ begin
 
     constant C_NONE : t_byte_array(0 to -1) := (others => (others => '0'));
 
+    ---------------------------------------------------------------------------
+    -- Scenarios
+    ---------------------------------------------------------------------------
+    procedure test_reset_values is
+    begin
+      check_reg(I2C_CFG      , x"00"          , "Reset value cfg");
+      check_reg(I2C_PRESCALER, C_PRESCALER_RST, "Reset value prescaler (PRESCALER_RATIO)");
+      check_reg(I2C_STATUS   , x"20"          , "Reset value status (rx_empty)");
+      check_value(scl_oe_o, '0', ERROR, "I2C disabled : SCL released", C_SCOPE);
+      check_value(sda_oe_o, '0', ERROR, "I2C disabled : SDA released", C_SCOPE);
+    end procedure;
+
+    procedure test_master_write is
+    begin
+      configure(4, 0, '1', "Master");
+      scl_mon_clear <= not scl_mon_clear;
+      bfm_start(BFM_SLAVE_CHECK, C_ADDR_BFM, bit_time_dut, t_byte_array'(x"A5", x"3C", x"0F"), C_NONE);
+      master_write(C_ADDR_BFM, t_byte_array'(x"A5", x"3C", x"0F"), true, "Master write");
+      bfm_wait("Master write");
+      wait_status(x"07", x"00", "Master write : not busy, ACK, bus free");
+      check_scl("Master write");
+    end procedure;
+
+    procedure test_master_read is
+    begin
+      configure(4, 0, '1', "Master");
+      bfm_start(BFM_SLAVE_TRANSMIT, C_ADDR_BFM, bit_time_dut, C_NONE, t_byte_array'(x"11", x"22", x"33"));
+      master_read(C_ADDR_BFM, 3, "Master read");
+      check_rx(t_byte_array'(x"11", x"22", x"33"), "Master read");
+      bfm_wait("Master read");
+      wait_status(x"27", x"20", "Master read : not busy, ACK, bus free, RX FIFO empty");
+    end procedure;
+
+    procedure test_master_write_read is
+    begin
+      configure(4, 0, '1', "Master");
+      bfm_start(BFM_SLAVE_CHECK_TRANSMIT, C_ADDR_BFM, bit_time_dut, t_byte_array'(0 => x"07"), t_byte_array'(x"5A", x"C3"));
+      master_write(C_ADDR_BFM, t_byte_array'(0 => x"07"), false, "Register read : write register address");
+      master_read (C_ADDR_BFM, 2, "Register read : repeated START, read");
+      check_rx(t_byte_array'(x"5A", x"C3"), "Register read");
+      bfm_wait("Register read");
+      wait_status(x"07", x"00", "Register read : not busy, ACK, bus free");
+    end procedure;
+
+    procedure test_master_nack is
+    begin
+      configure(4, 0, '1', "Master");
+      master_write(C_ADDR_NONE, t_byte_array'(0 => x"55"), true, "Absent slave");
+      wait_status(x"05", x"00", "Absent slave : not busy, bus free");
+      check_reg(I2C_STATUS, x"22", "Absent slave : status nack = 1");
+
+      -- A new transfer clears the NACK status
+      bfm_start(BFM_SLAVE_CHECK, C_ADDR_BFM, bit_time_dut, t_byte_array'(0 => x"66"), C_NONE);
+      master_write(C_ADDR_BFM, t_byte_array'(0 => x"66"), true, "Write after NACK");
+      bfm_wait("Write after NACK");
+      wait_status(x"07", x"00", "Write after NACK : NACK status cleared by the START");
+    end procedure;
+
+    procedure test_master_stretch is
+    begin
+      configure(4, 0, '1', "Master");
+      scl_mon_clear <= not scl_mon_clear;
+      stretch_fall  <= 5;
+      stretch_time  <= 3 us;
+      stretch_req   <= stretch_req + 1;
+      bfm_start(BFM_SLAVE_CHECK, C_ADDR_BFM, bit_time_dut, t_byte_array'(x"C0", x"DE"), C_NONE);
+      master_write(C_ADDR_BFM, t_byte_array'(x"C0", x"DE"), true, "Stretched write");
+      bfm_wait("Stretched write");
+      wait_status(x"07", x"00", "Stretched write : not busy, ACK, bus free");
+      check_value(stretch_done, stretch_req, ERROR, "Stretched write : SCL stretched by the bench", C_SCOPE);
+      check_scl("Stretched write : the high phase restarts after the stretching");
+    end procedure;
+
+    procedure test_master_prescaler is
+    begin
+      configure(9, 0, '1', "Prescaler 9");
+      scl_mon_clear <= not scl_mon_clear;
+      bfm_start(BFM_SLAVE_CHECK, C_ADDR_BFM, bit_time_dut, t_byte_array'(x"81", x"7E"), C_NONE);
+      master_write(C_ADDR_BFM, t_byte_array'(x"81", x"7E"), true, "Prescaler 9");
+      bfm_wait("Prescaler 9");
+      wait_status(x"07", x"00", "Prescaler 9 : not busy, ACK, bus free");
+      check_scl("Prescaler 9");
+    end procedure;
+
+    procedure test_slave_write is
+    begin
+      configure(4, C_ADDR_DUT, '1', "Slave");
+      bfm_start(BFM_MASTER_TRANSMIT, C_ADDR_DUT, C_BIT_TIME_MASTER, t_byte_array'(x"DE", x"AD", x"BE", x"EF"), C_NONE);
+      wait_status(x"18", x"08", "Slave write : addressed, master writes");
+      bfm_wait("Slave write");
+      wait_status(x"3C", x"00", "Slave write : STOP, bus free, RX FIFO not empty");
+      check_rx(t_byte_array'(x"DE", x"AD", x"BE", x"EF"), "Slave write");
+      check_reg(I2C_STATUS, x"20", "Slave write : RX FIFO empty");
+    end procedure;
+
+    procedure test_slave_read is
+    begin
+      configure(4, C_ADDR_DUT, '1', "Slave");
+      write_reg(I2C_DATA, x"12", "Slave read : TX byte 0");
+      write_reg(I2C_DATA, x"34", "Slave read : TX byte 1");
+      write_reg(I2C_DATA, x"56", "Slave read : TX byte 2");
+      bfm_start(BFM_MASTER_CHECK, C_ADDR_DUT, C_BIT_TIME_MASTER, C_NONE, t_byte_array'(x"12", x"34", x"56"));
+      wait_status(x"18", x"18", "Slave read : addressed, master reads");
+      bfm_wait("Slave read");
+      wait_status(x"3C", x"30", "Slave read : STOP, bus free, last direction read");
+    end procedure;
+
+    procedure test_slave_stretch is
+    begin
+      configure(4, C_ADDR_DUT, '1', "Slave");
+      bfm_start(BFM_MASTER_CHECK, C_ADDR_DUT, C_BIT_TIME_MASTER, C_NONE, t_byte_array'(x"9A", x"BC"));
+      wait_status(x"18", x"18", "Slave stretching : addressed, master reads");
+      wait for 10*C_BIT_TIME_MASTER;
+      check_value(i2c_if.scl, '0', MATCH_STD, ERROR, "Slave stretching : SCL held low by the DUT", C_SCOPE);
+      check_value(scl_oe_o  , '1', ERROR, "Slave stretching : DUT pulls SCL low", C_SCOPE);
+      write_reg(I2C_DATA, x"9A", "Slave stretching : TX byte 0");
+      write_reg(I2C_DATA, x"BC", "Slave stretching : TX byte 1");
+      bfm_wait("Slave stretching");
+      wait_status(x"3C", x"30", "Slave stretching : STOP, bus free");
+    end procedure;
+
+    procedure test_slave_write_read is
+    begin
+      configure(4, C_ADDR_DUT, '1', "Slave");
+      write_reg(I2C_DATA, x"77", "Slave register read : TX byte");
+      bfm_start(BFM_MASTER_TRANSMIT_CHECK, C_ADDR_DUT, C_BIT_TIME_MASTER, t_byte_array'(0 => x"07"), t_byte_array'(0 => x"77"));
+      bfm_wait("Slave register read");
+      wait_status(x"3C", x"10", "Slave register read : STOP, bus free, RX FIFO not empty");
+      check_rx(t_byte_array'(0 => x"07"), "Slave register read");
+    end procedure;
+
+    procedure test_slave_wrong_address is
+    begin
+      configure(4, C_ADDR_DUT, '1', "Slave");
+      bfm_start(BFM_MASTER_QUICK_NACK, C_ADDR_DUT+1, C_BIT_TIME_MASTER, C_NONE, C_NONE);
+      bfm_wait("Wrong address");
+      check_reg(I2C_STATUS, x"20", "Wrong address : not addressed, RX FIFO empty");
+    end procedure;
+
+    procedure test_slave_disabled is
+    begin
+      configure(4, 0, '1', "Slave disabled");
+      bfm_start(BFM_MASTER_QUICK_NACK, C_ADDR_DUT, C_BIT_TIME_MASTER, C_NONE, C_NONE);
+      bfm_wait("Slave disabled");
+      check_reg(I2C_STATUS, x"20", "Slave disabled : not addressed, RX FIFO empty");
+    end procedure;
+
+    procedure test_disabled is
+    begin
+      configure(4, C_ADDR_DUT, '0', "I2C disabled");
+      bfm_start(BFM_MASTER_QUICK_NACK, C_ADDR_DUT, C_BIT_TIME_MASTER, C_NONE, C_NONE);
+      bfm_wait("I2C disabled");
+      check_reg(I2C_STATUS, x"20", "I2C disabled : not addressed, RX FIFO empty");
+      check_value(scl_oe_o, '0', ERROR, "I2C disabled : SCL released", C_SCOPE);
+      check_value(sda_oe_o, '0', ERROR, "I2C disabled : SDA released", C_SCOPE);
+    end procedure;
+
   begin
     v_sbi_config.max_wait_cycles := 100000;
     v_poll_panel(ID_BFM)         := DISABLED;
@@ -416,147 +589,25 @@ begin
     arst_b_i <= '1';
     wait until rising_edge(clk_i);
 
-    log(ID_SEQUENCER, "Reset released, starting I2C basic test", C_SCOPE);
+    log(ID_LOG_HDR, "Scenario " & TEST, C_SCOPE);
 
-    ------------------------------------------------
-    log(ID_LOG_HDR, "1. Reset values", C_SCOPE);
-    ------------------------------------------------
-    check_reg(I2C_CFG      , x"00"          , "Reset value cfg");
-    check_reg(I2C_PRESCALER, C_PRESCALER_RST, "Reset value prescaler (PRESCALER_RATIO)");
-    check_reg(I2C_STATUS   , x"20"          , "Reset value status (rx_empty)");
-    check_value(scl_oe_o, '0', ERROR, "I2C disabled : SCL released", C_SCOPE);
-    check_value(sda_oe_o, '0', ERROR, "I2C disabled : SDA released", C_SCOPE);
-
-    ------------------------------------------------
-    log(ID_LOG_HDR, "2. DUT master write to the BFM slave", C_SCOPE);
-    ------------------------------------------------
-    configure(4, 0, '1', "Master");
-    scl_mon_clear <= not scl_mon_clear;
-    bfm_start(BFM_SLAVE_CHECK, C_ADDR_BFM, bit_time_dut, t_byte_array'(x"A5", x"3C", x"0F"), C_NONE);
-    master_write(C_ADDR_BFM, t_byte_array'(x"A5", x"3C", x"0F"), true, "Master write");
-    bfm_wait("Master write");
-    wait_status(x"07", x"00", "Master write : not busy, ACK, bus free");
-    check_scl("Master write");
-
-    ------------------------------------------------
-    log(ID_LOG_HDR, "3. DUT master read from the BFM slave", C_SCOPE);
-    ------------------------------------------------
-    bfm_start(BFM_SLAVE_TRANSMIT, C_ADDR_BFM, bit_time_dut, C_NONE, t_byte_array'(x"11", x"22", x"33"));
-    master_read(C_ADDR_BFM, 3, "Master read");
-    check_rx(t_byte_array'(x"11", x"22", x"33"), "Master read");
-    bfm_wait("Master read");
-    wait_status(x"27", x"20", "Master read : not busy, ACK, bus free, RX FIFO empty");
-
-    ------------------------------------------------
-    log(ID_LOG_HDR, "4. DUT master write + repeated START + read (register read)", C_SCOPE);
-    ------------------------------------------------
-    bfm_start(BFM_SLAVE_CHECK_TRANSMIT, C_ADDR_BFM, bit_time_dut, t_byte_array'(0 => x"07"), t_byte_array'(x"5A", x"C3"));
-    master_write(C_ADDR_BFM, t_byte_array'(0 => x"07"), false, "Register read : write register address");
-    master_read (C_ADDR_BFM, 2, "Register read : repeated START, read");
-    check_rx(t_byte_array'(x"5A", x"C3"), "Register read");
-    bfm_wait("Register read");
-    wait_status(x"07", x"00", "Register read : not busy, ACK, bus free");
-
-    ------------------------------------------------
-    log(ID_LOG_HDR, "5. DUT master write to an absent slave : NACK", C_SCOPE);
-    ------------------------------------------------
-    master_write(C_ADDR_NONE, t_byte_array'(0 => x"55"), true, "Absent slave");
-    wait_status(x"05", x"00", "Absent slave : not busy, bus free");
-    check_reg(I2C_STATUS, x"22", "Absent slave : status nack = 1");
-
-    -- A new transfer clears the NACK status
-    bfm_start(BFM_SLAVE_CHECK, C_ADDR_BFM, bit_time_dut, t_byte_array'(0 => x"66"), C_NONE);
-    master_write(C_ADDR_BFM, t_byte_array'(0 => x"66"), true, "Write after NACK");
-    bfm_wait("Write after NACK");
-    wait_status(x"07", x"00", "Write after NACK : NACK status cleared by the START");
-
-    ------------------------------------------------
-    log(ID_LOG_HDR, "6. DUT master write with SCL stretched by the bench", C_SCOPE);
-    ------------------------------------------------
-    scl_mon_clear <= not scl_mon_clear;
-    stretch_fall  <= 5;
-    stretch_time  <= 3 us;
-    stretch_req   <= stretch_req + 1;
-    bfm_start(BFM_SLAVE_CHECK, C_ADDR_BFM, bit_time_dut, t_byte_array'(x"C0", x"DE"), C_NONE);
-    master_write(C_ADDR_BFM, t_byte_array'(x"C0", x"DE"), true, "Stretched write");
-    bfm_wait("Stretched write");
-    wait_status(x"07", x"00", "Stretched write : not busy, ACK, bus free");
-    check_value(stretch_done, stretch_req, ERROR, "Stretched write : SCL stretched by the bench", C_SCOPE);
-    check_scl("Stretched write : the high phase restarts after the stretching");
-
-    ------------------------------------------------
-    log(ID_LOG_HDR, "7. DUT master with an other prescaler", C_SCOPE);
-    ------------------------------------------------
-    configure(9, 0, '1', "Prescaler 9");
-    scl_mon_clear <= not scl_mon_clear;
-    bfm_start(BFM_SLAVE_CHECK, C_ADDR_BFM, bit_time_dut, t_byte_array'(x"81", x"7E"), C_NONE);
-    master_write(C_ADDR_BFM, t_byte_array'(x"81", x"7E"), true, "Prescaler 9");
-    bfm_wait("Prescaler 9");
-    wait_status(x"07", x"00", "Prescaler 9 : not busy, ACK, bus free");
-    check_scl("Prescaler 9");
-
-    ------------------------------------------------
-    log(ID_LOG_HDR, "8. BFM master write to the DUT slave", C_SCOPE);
-    ------------------------------------------------
-    configure(4, C_ADDR_DUT, '1', "Slave");
-    bfm_start(BFM_MASTER_TRANSMIT, C_ADDR_DUT, C_BIT_TIME_MASTER, t_byte_array'(x"DE", x"AD", x"BE", x"EF"), C_NONE);
-    wait_status(x"18", x"08", "Slave write : addressed, master writes");
-    bfm_wait("Slave write");
-    wait_status(x"3C", x"00", "Slave write : STOP, bus free, RX FIFO not empty");
-    check_rx(t_byte_array'(x"DE", x"AD", x"BE", x"EF"), "Slave write");
-    check_reg(I2C_STATUS, x"20", "Slave write : RX FIFO empty");
-
-    ------------------------------------------------
-    log(ID_LOG_HDR, "9. BFM master read from the DUT slave", C_SCOPE);
-    ------------------------------------------------
-    write_reg(I2C_DATA, x"12", "Slave read : TX byte 0");
-    write_reg(I2C_DATA, x"34", "Slave read : TX byte 1");
-    write_reg(I2C_DATA, x"56", "Slave read : TX byte 2");
-    bfm_start(BFM_MASTER_CHECK, C_ADDR_DUT, C_BIT_TIME_MASTER, C_NONE, t_byte_array'(x"12", x"34", x"56"));
-    wait_status(x"18", x"18", "Slave read : addressed, master reads");
-    bfm_wait("Slave read");
-    wait_status(x"3C", x"30", "Slave read : STOP, bus free, last direction read");
-
-    ------------------------------------------------
-    log(ID_LOG_HDR, "10. BFM master read from the DUT slave, TX FIFO empty : clock stretching", C_SCOPE);
-    ------------------------------------------------
-    bfm_start(BFM_MASTER_CHECK, C_ADDR_DUT, C_BIT_TIME_MASTER, C_NONE, t_byte_array'(x"9A", x"BC"));
-    wait_status(x"18", x"18", "Slave stretching : addressed, master reads");
-    wait for 10*C_BIT_TIME_MASTER;
-    check_value(i2c_if.scl, '0', MATCH_STD, ERROR, "Slave stretching : SCL held low by the DUT", C_SCOPE);
-    check_value(scl_oe_o  , '1', ERROR, "Slave stretching : DUT pulls SCL low", C_SCOPE);
-    write_reg(I2C_DATA, x"9A", "Slave stretching : TX byte 0");
-    write_reg(I2C_DATA, x"BC", "Slave stretching : TX byte 1");
-    bfm_wait("Slave stretching");
-    wait_status(x"3C", x"30", "Slave stretching : STOP, bus free");
-
-    ------------------------------------------------
-    log(ID_LOG_HDR, "11. BFM master write + repeated START + read from the DUT slave", C_SCOPE);
-    ------------------------------------------------
-    write_reg(I2C_DATA, x"77", "Slave register read : TX byte");
-    bfm_start(BFM_MASTER_TRANSMIT_CHECK, C_ADDR_DUT, C_BIT_TIME_MASTER, t_byte_array'(0 => x"07"), t_byte_array'(0 => x"77"));
-    bfm_wait("Slave register read");
-    wait_status(x"3C", x"10", "Slave register read : STOP, bus free, RX FIFO not empty");
-    check_rx(t_byte_array'(0 => x"07"), "Slave register read");
-
-    ------------------------------------------------
-    log(ID_LOG_HDR, "12. Wrong address, slave disabled, I2C disabled : NACK", C_SCOPE);
-    ------------------------------------------------
-    bfm_start(BFM_MASTER_QUICK_NACK, C_ADDR_DUT+1, C_BIT_TIME_MASTER, C_NONE, C_NONE);
-    bfm_wait("Wrong address");
-    check_reg(I2C_STATUS, x"30", "Wrong address : not addressed, RX FIFO empty");
-
-    configure(4, 0, '1', "Slave disabled");
-    bfm_start(BFM_MASTER_QUICK_NACK, C_ADDR_DUT, C_BIT_TIME_MASTER, C_NONE, C_NONE);
-    bfm_wait("Slave disabled");
-    check_reg(I2C_STATUS, x"20", "Slave disabled : not addressed, RX FIFO empty");
-
-    configure(4, C_ADDR_DUT, '0', "I2C disabled");
-    bfm_start(BFM_MASTER_QUICK_NACK, C_ADDR_DUT, C_BIT_TIME_MASTER, C_NONE, C_NONE);
-    bfm_wait("I2C disabled");
-    check_reg(I2C_STATUS, x"20", "I2C disabled : not addressed, RX FIFO empty");
-    check_value(scl_oe_o, '0', ERROR, "I2C disabled : SCL released", C_SCOPE);
-    check_value(sda_oe_o, '0', ERROR, "I2C disabled : SDA released", C_SCOPE);
+    if    TEST = "reset_values"        then test_reset_values;
+    elsif TEST = "master_write"        then test_master_write;
+    elsif TEST = "master_read"         then test_master_read;
+    elsif TEST = "master_write_read"   then test_master_write_read;
+    elsif TEST = "master_nack"         then test_master_nack;
+    elsif TEST = "master_stretch"      then test_master_stretch;
+    elsif TEST = "master_prescaler"    then test_master_prescaler;
+    elsif TEST = "slave_write"         then test_slave_write;
+    elsif TEST = "slave_read"          then test_slave_read;
+    elsif TEST = "slave_stretch"       then test_slave_stretch;
+    elsif TEST = "slave_write_read"    then test_slave_write_read;
+    elsif TEST = "slave_wrong_address" then test_slave_wrong_address;
+    elsif TEST = "slave_disabled"      then test_slave_disabled;
+    elsif TEST = "disabled"            then test_disabled;
+    else
+      alert(TB_FAILURE, "Unknown scenario TEST = " & TEST, C_SCOPE);
+    end if;
 
     log(ID_LOG_HDR, "Simulation Finished", C_SCOPE);
     report_alert_counters(FINAL);

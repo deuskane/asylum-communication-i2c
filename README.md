@@ -242,7 +242,7 @@ Notes:
 
 | File | DUT | Description |
 |------|-----|-------------|
-| [sim/basic/tb_I2C.vhd](sim/basic/tb_I2C.vhd) | `sbi_I2C` | UVVM testbench, self-checking (79 visible checks). The CSR are accessed with the SBI BFM (`bitvis_vip_sbi`), the I2C bus (open drain, pull-up) is driven by the UVVM I2C BFM (`bitvis_vip_i2c`) in a dedicated process. A process stretches SCL on request and a monitor measures the minimum SCL period and high phase. DUT master / BFM slave: write 3 bytes, read 3 bytes, write + repeated START + read, write to an absent slave (`status.nack = 1`, cleared by the next transfer), write with SCL stretched 3 us by the bench (the high phase restarts after the stretching), SCL period `4*(ratio+1)+2` and high phase `2*(ratio+1)+2` clock cycles for ratio 4 and 9. BFM master / DUT slave: write 4 bytes (`status.slave_addressed`, `status.slave_read`, `status.rx_empty`), read 3 bytes, read with an empty TX FIFO (SCL held low by the DUT until the bytes are written), write + repeated START + read, NACK on a wrong address, on a disabled slave and on a disabled I2C. Plus: reset values of `cfg`, `prescaler` and `status` |
+| [sim/basic/tb_I2C.vhd](sim/basic/tb_I2C.vhd) | `sbi_I2C` | UVVM testbench, self-checking, one scenario per simulation selected by the generic `TEST` (one `sim_<TEST>` target per scenario, see [Targets](#targets)). The CSR are accessed with the SBI BFM (`bitvis_vip_sbi`), the I2C bus (open drain, pull-up) is driven by the UVVM I2C BFM (`bitvis_vip_i2c`) in a dedicated process. A process stretches SCL on request and a monitor measures the minimum SCL period and high phase |
 
 The slave clock stretching on a full RX FIFO is not checked: the UVVM I2C BFM master samples the acknowledge a quarter of bit after releasing SCL, without waiting for SCL high.
 
@@ -251,13 +251,29 @@ The slave clock stretching on a full RX FIFO is not checked: the UVVM I2C BFM ma
 | Target | Toplevel | Description |
 |--------|----------|-------------|
 | `default` | `sbi_I2C` | HDL fileset + CSR generation (not a simulation) |
-| `sim_basic` | `tb_I2C` | `sbi_I2C` with the UVVM I2C and SBI BFM |
+| `default_sim` | `tb_I2C` | Base of the `tb_I2C` simulations (`TEST=master_write`) |
+| `sim_reset_values` | `tb_I2C` | Reset values of `cfg`, `prescaler` and `status`, pads released |
+| `sim_master_write` | `tb_I2C` | DUT master writes 3 bytes to the BFM slave; SCL period `4*(ratio+1)+2` and high phase `2*(ratio+1)+2` clock cycles (ratio 4) |
+| `sim_master_read` | `tb_I2C` | DUT master reads 3 bytes from the BFM slave |
+| `sim_master_write_read` | `tb_I2C` | DUT master write + repeated START + read (register read) |
+| `sim_master_nack` | `tb_I2C` | DUT master writes to an absent slave: `status.nack = 1`, cleared by the next transfer |
+| `sim_master_stretch` | `tb_I2C` | DUT master write with SCL stretched 3 us by the bench (the high phase restarts after the stretching) |
+| `sim_master_prescaler` | `tb_I2C` | SCL period and high phase with ratio 9 |
+| `sim_slave_write` | `tb_I2C` | BFM master writes 4 bytes to the DUT slave (`status.slave_addressed`, `status.slave_read`, `status.rx_empty`) |
+| `sim_slave_read` | `tb_I2C` | BFM master reads 3 bytes from the DUT slave |
+| `sim_slave_stretch` | `tb_I2C` | BFM master reads from the DUT slave with an empty TX FIFO: SCL held low by the DUT until the bytes are written |
+| `sim_slave_write_read` | `tb_I2C` | BFM master write + repeated START + read from the DUT slave |
+| `sim_slave_wrong_address` | `tb_I2C` | NACK on an other address |
+| `sim_slave_disabled` | `tb_I2C` | NACK when `cfg.slave_addr = 0` |
+| `sim_disabled` | `tb_I2C` | NACK and pads released when `cfg.enable = 0` |
 | `lint_ghdl` | `sbi_I2C_synth_top` | Lint: GHDL `-Wall` analysis and elaboration (empty simulation) of `sbi_I2C` in a wrapper with flat SBI ports (`syn/ghdl/sbi_I2C_synth_top.vhd`) |
 | `lint_ghdl_synth_default` | `sbi_I2C_synth_top` | Synthesis check (see below), default generics of `sbi_I2C` |
-| `lint_ghdl_synth_sim_basic` | `sbi_I2C_synth_top` | Synthesis check, depths of `sim_basic`: `DEPTH_CMD = 4`, `DEPTH_TX = 8`, `DEPTH_RX = 8` |
+| `lint_ghdl_synth_sim` | `sbi_I2C_synth_top` | Synthesis check, depths of the `sim_*` targets: `DEPTH_CMD = 4`, `DEPTH_TX = 8`, `DEPTH_RX = 8` |
 | `lint_ghdl_synth_master_only` | `sbi_I2C_synth_top` | Synthesis check, `SLAVE_ENABLE = false` |
 | `lint_ghdl_synth_slave_only` | `sbi_I2C_synth_top` | Synthesis check, `MASTER_ENABLE = false` (no `cmd` register) |
 | `lint_ghdl_synth_fixed_prescaler` | `sbi_I2C_synth_top` | Synthesis check, `USER_DEFINE_PRESCALER = false`, `PRESCALER_RATIO = x"18"` |
+
+To add a scenario to `tb_I2C`, add a `test_<name>` procedure in its sequencer, its case in the dispatch on `TEST`, and a `sim_<name>` target with `TEST=<name>` in `I2C.core`.
 
 A `lint_ghdl_synth_*` target is `lint_ghdl` with the generics of its configuration (FuseSoC `parameters`) and a `pre_run` hook, `syn/ghdl/ghdl_synth.sh`, which adds `include ghdl_synth.mk` to the Makefile generated by edalize. The run step (`make run EXTRA_OPTIONS=<generics>`) then runs, in the build directory:
 
@@ -268,11 +284,11 @@ To add a configuration, add a target with its `parameters` (the generics are dec
 
 ### How to Run
 
-The default tool is GHDL (`mk/defs.mk`: `TOOL ?= ghdl`, `TARGET ?= sim_basic`).
+The default tool is GHDL (`mk/defs.mk`: `TOOL ?= ghdl`, `TARGET ?= sim_master_write`).
 
 ```bash
 make help                 # variables, rules and target list (mk/targets.txt)
-make sim_basic            # run one target (log in log/)
+make sim_master_write     # run one target (log in log/)
 make nonreg_sim           # run every sim_* target
 make lint_ghdl            # GHDL -Wall lint (make nonreg_lint: every lint_* target)
 make lint_ghdl_synth_default   # GHDL -Wall lint + ghdl --synth -Wall check of one configuration
@@ -282,7 +298,7 @@ make clean                # remove build/
 Equivalent FuseSoC command:
 
 ```bash
-fusesoc --cores-root . run --build-root build --target sim_basic asylum:communication:I2C:1.0.0
+fusesoc --cores-root . run --build-root build --target sim_slave_write asylum:communication:I2C:1.0.0
 ```
 
 Outside CI, GHDL writes a waveform `dut.fst`.
@@ -366,7 +382,7 @@ asylum-communication-i2c/
 │       ├── I2C_csr.md      # Generated
 │       └── I2C_csr.h       # Generated
 ├── sim/
-│   └── basic/              # tb_I2C.vhd (UVVM, SBI and I2C BFM)
+│   └── basic/              # tb_I2C.vhd (UVVM, SBI and I2C BFM, one scenario per sim_* target)
 └── syn/ghdl/
     ├── sbi_I2C_synth_top.vhd  # Lint / synthesis check top (sbi_I2C, flat SBI ports)
     ├── ghdl_synth.sh       # pre_run hook of lint_ghdl_synth_*: includes ghdl_synth.mk in the edalize Makefile
