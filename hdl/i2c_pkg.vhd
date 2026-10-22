@@ -72,6 +72,45 @@ component i2c_master is
     );
 end component i2c_master;
 
+component i2c_slave is
+  generic (
+    PRESCALER_WIDTH      : natural := 8
+    );
+  port (
+    -- Clock & Reset
+    clk_i                : in  std_logic;
+    arst_b_i             : in  std_logic;
+
+    -- Data From AXI Stream To I2C (bytes read by the master)
+    tx_tvalid_i          : in  std_logic;
+    tx_tready_o          : out std_logic;
+    tx_tdata_i           : in  std_logic_vector(8-1 downto 0);
+
+    -- Data From I2C To AXI Stream (bytes written by the master)
+    rx_tvalid_o          : out std_logic;
+    rx_tready_i          : in  std_logic;
+    rx_tdata_o           : out std_logic_vector(8-1 downto 0);
+
+    -- Configuration
+    cfg_enable_i         : in  std_logic;                     -- 0 : slave inactive, SCL and SDA released
+    cfg_slave_addr_i     : in  std_logic_vector(7-1 downto 0);-- 7-bit address of the slave
+    cfg_prescaler_ratio_i: in  std_logic_vector(PRESCALER_WIDTH-1 downto 0); -- Data setup time after a clock stretching minus one, in clock cycles
+
+    -- Status
+    sts_addressed_o      : out std_logic;                     -- Address acknowledged, until the next STOP or START
+    sts_read_o           : out std_logic;                     -- R/W bit of the last acknowledged address
+
+    -- I2C Bus (synchronized inputs and events, open drain outputs)
+    sda_i                : in  std_logic;                     -- SDA level (synchronized)
+    scl_rise_i           : in  std_logic;                     -- Rising  edge of SCL
+    scl_fall_i           : in  std_logic;                     -- Falling edge of SCL
+    bus_start_i          : in  std_logic;                     -- START condition
+    bus_stop_i           : in  std_logic;                     -- STOP  condition
+    scl_oe_o             : out std_logic;                     -- 1 : SCL pulled low
+    sda_oe_o             : out std_logic                      -- 1 : SDA pulled low
+    );
+end component i2c_slave;
+
 -- [COMPONENT_INSERT][END]
 
 end i2c_pkg;
