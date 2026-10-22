@@ -56,14 +56,6 @@ architecture rtl of I2C_registers is
 
   signal   sig_busy  : std_logic;
 
-  function INIT_data
-    return std_logic_vector is
-    variable tmp : std_logic_vector(8-1 downto 0);
-  begin  -- function INIT_data
-    tmp(7 downto 0) := "00000000"; -- value
-    return tmp;
-  end function INIT_data;
-
   signal   data_wcs       : std_logic;
   signal   data_we        : std_logic;
   signal   data_wdata     : std_logic_vector(8-1 downto 0);
@@ -78,21 +70,10 @@ architecture rtl of I2C_registers is
   signal   data_rdata_hw  : std_logic_vector(8-1 downto 0);
   signal   data_rbusy     : std_logic;
 
-  function INIT_cmd
-    return std_logic_vector is
-    variable tmp : std_logic_vector(4-1 downto 0);
-  begin  -- function INIT_cmd
-    tmp(0 downto 0) := "0"; -- start
-    tmp(1 downto 1) := "0"; -- stop
-    tmp(3 downto 2) := "00"; -- op
-    return tmp;
-  end function INIT_cmd;
-
   signal   cmd_wcs       : std_logic;
   signal   cmd_we        : std_logic;
   signal   cmd_wdata     : std_logic_vector(8-1 downto 0);
   signal   cmd_wdata_sw  : std_logic_vector(4-1 downto 0);
-  signal   cmd_wdata_hw  : std_logic_vector(4-1 downto 0);
   signal   cmd_wbusy     : std_logic;
 
   signal   cmd_rcs       : std_logic;
@@ -101,6 +82,20 @@ architecture rtl of I2C_registers is
   signal   cmd_rdata_sw  : std_logic_vector(4-1 downto 0);
   signal   cmd_rdata_hw  : std_logic_vector(4-1 downto 0);
   signal   cmd_rbusy     : std_logic;
+
+  signal   status_wcs       : std_logic;
+  signal   status_we        : std_logic;
+  signal   status_wdata     : std_logic_vector(8-1 downto 0);
+  signal   status_wdata_sw  : std_logic_vector(6-1 downto 0);
+  signal   status_wdata_hw  : std_logic_vector(6-1 downto 0);
+  signal   status_wbusy     : std_logic;
+
+  signal   status_rcs       : std_logic;
+  signal   status_re        : std_logic;
+  signal   status_rdata     : std_logic_vector(8-1 downto 0);
+  signal   status_rdata_sw  : std_logic_vector(6-1 downto 0);
+  signal   status_rdata_hw  : std_logic_vector(6-1 downto 0);
+  signal   status_rbusy     : std_logic;
 
   function INIT_cfg
     return std_logic_vector is
@@ -115,7 +110,6 @@ architecture rtl of I2C_registers is
   signal   cfg_we        : std_logic;
   signal   cfg_wdata     : std_logic_vector(8-1 downto 0);
   signal   cfg_wdata_sw  : std_logic_vector(8-1 downto 0);
-  signal   cfg_wdata_hw  : std_logic_vector(8-1 downto 0);
   signal   cfg_wbusy     : std_logic;
 
   signal   cfg_rcs       : std_logic;
@@ -137,7 +131,6 @@ architecture rtl of I2C_registers is
   signal   prescaler_we        : std_logic;
   signal   prescaler_wdata     : std_logic_vector(8-1 downto 0);
   signal   prescaler_wdata_sw  : std_logic_vector(8-1 downto 0);
-  signal   prescaler_wdata_hw  : std_logic_vector(8-1 downto 0);
   signal   prescaler_wbusy     : std_logic;
 
   signal   prescaler_rcs       : std_logic;
@@ -146,33 +139,6 @@ architecture rtl of I2C_registers is
   signal   prescaler_rdata_sw  : std_logic_vector(8-1 downto 0);
   signal   prescaler_rdata_hw  : std_logic_vector(8-1 downto 0);
   signal   prescaler_rbusy     : std_logic;
-
-  function INIT_status
-    return std_logic_vector is
-    variable tmp : std_logic_vector(6-1 downto 0);
-  begin  -- function INIT_status
-    tmp(0 downto 0) := "0"; -- busy
-    tmp(1 downto 1) := "0"; -- nack
-    tmp(2 downto 2) := "0"; -- bus_busy
-    tmp(3 downto 3) := "0"; -- slave_addressed
-    tmp(4 downto 4) := "0"; -- slave_read
-    tmp(5 downto 5) := "0"; -- rx_empty
-    return tmp;
-  end function INIT_status;
-
-  signal   status_wcs       : std_logic;
-  signal   status_we        : std_logic;
-  signal   status_wdata     : std_logic_vector(8-1 downto 0);
-  signal   status_wdata_sw  : std_logic_vector(6-1 downto 0);
-  signal   status_wdata_hw  : std_logic_vector(6-1 downto 0);
-  signal   status_wbusy     : std_logic;
-
-  signal   status_rcs       : std_logic;
-  signal   status_re        : std_logic;
-  signal   status_rdata     : std_logic_vector(8-1 downto 0);
-  signal   status_rdata_sw  : std_logic_vector(6-1 downto 0);
-  signal   status_rdata_hw  : std_logic_vector(6-1 downto 0);
-  signal   status_rbusy     : std_logic;
 
 begin  -- architecture rtl
 
@@ -213,15 +179,15 @@ begin  -- architecture rtl
     data_rcs     <= '1' when (sig_raddr = I2C_DATA) else '0';
     data_re      <= sig_rcs and sig_re and data_rcs;
     data_rdata   <= (
-      0 => data_rdata_sw(0), -- value(0)
-      1 => data_rdata_sw(1), -- value(1)
-      2 => data_rdata_sw(2), -- value(2)
-      3 => data_rdata_sw(3), -- value(3)
-      4 => data_rdata_sw(4), -- value(4)
-      5 => data_rdata_sw(5), -- value(5)
-      6 => data_rdata_sw(6), -- value(6)
-      7 => data_rdata_sw(7), -- value(7)
-      others => '0');
+       0 => data_rdata_sw(0) -- value(0)
+      ,1 => data_rdata_sw(1) -- value(1)
+      ,2 => data_rdata_sw(2) -- value(2)
+      ,3 => data_rdata_sw(3) -- value(3)
+      ,4 => data_rdata_sw(4) -- value(4)
+      ,5 => data_rdata_sw(5) -- value(5)
+      ,6 => data_rdata_sw(6) -- value(6)
+      ,7 => data_rdata_sw(7) -- value(7)
+      );
 
     data_wcs     <= '1' when       (sig_waddr = I2C_DATA)   else '0';
     data_we      <= sig_wcs and sig_we and data_wcs;
@@ -277,7 +243,7 @@ begin  -- architecture rtl
   generate
   --==================================
   -- Register    : cmd
-  -- Description : Master Command FIFO. Each command is executed in this order : START (if start), byte (if op), STOP (if stop)
+  -- Description : Master Command FIFO, write only (a read returns status). Each command is executed in this order : START (if start), byte (if op), STOP (if stop)
   -- Address     : 0x1
   -- Width       : 4
   -- Sw Access   : wo
@@ -360,6 +326,109 @@ begin  -- architecture rtl
     sw2hw_o.cmd.valid <= '0';
   end generate gen_cmd_b;
 
+  gen_status: if (True)
+  generate
+  --==================================
+  -- Register    : status
+  -- Description : I2C Status Register, read at the address of cmd (cmd is write only), without latency
+  -- Address     : 0x1
+  -- Width       : 6
+  -- Sw Access   : ro
+  -- Hw Access   : wo
+  -- Hw Type     : ext
+  --==================================
+  --==================================
+  -- Field       : busy
+  -- Description : Master : 0 : no command in progress or pending, 1 : command in progress or pending
+  -- Width       : 1
+  --==================================
+
+  --==================================
+  -- Field       : nack
+  -- Description : Master : 1 : a NACK was received on a written byte since the last START generated from a released bus
+  -- Width       : 1
+  --==================================
+
+  --==================================
+  -- Field       : bus_busy
+  -- Description : 0 : bus free, 1 : START detected and no STOP since
+  -- Width       : 1
+  --==================================
+
+  --==================================
+  -- Field       : slave_addressed
+  -- Description : Slave : 1 : the slave address was acknowledged, until the next STOP or START
+  -- Width       : 1
+  --==================================
+
+  --==================================
+  -- Field       : slave_read
+  -- Description : Slave : direction of the last acknowledged address. 0 : the master writes, 1 : the master reads
+  -- Width       : 1
+  --==================================
+
+  --==================================
+  -- Field       : rx_empty
+  -- Description : 0 : at least one byte can be read in data, 1 : RX FIFO empty (a read of data waits for a byte)
+  -- Width       : 1
+  --==================================
+
+
+    status_rcs     <= '1' when (sig_raddr = I2C_STATUS) else '0';
+    status_re      <= sig_rcs and sig_re and status_rcs;
+    status_rdata   <= (
+       0 => status_rdata_sw(0) -- busy(0)
+      ,1 => status_rdata_sw(1) -- nack(0)
+      ,2 => status_rdata_sw(2) -- bus_busy(0)
+      ,3 => status_rdata_sw(3) -- slave_addressed(0)
+      ,4 => status_rdata_sw(4) -- slave_read(0)
+      ,5 => status_rdata_sw(5) -- rx_empty(0)
+      ,others => '0'
+      );
+
+    status_wcs      <= '0';
+    status_we       <= '0';
+    status_wdata    <= (others=>'0');
+    status_wdata_sw <= (others=>'0');
+    status_wdata_hw(0 downto 0) <= hw2sw_i.status.busy; -- busy
+    status_wdata_hw(1 downto 1) <= hw2sw_i.status.nack; -- nack
+    status_wdata_hw(2 downto 2) <= hw2sw_i.status.bus_busy; -- bus_busy
+    status_wdata_hw(3 downto 3) <= hw2sw_i.status.slave_addressed; -- slave_addressed
+    status_wdata_hw(4 downto 4) <= hw2sw_i.status.slave_read; -- slave_read
+    status_wdata_hw(5 downto 5) <= hw2sw_i.status.rx_empty; -- rx_empty
+
+    ins_status : csr_ext
+      generic map
+        (WIDTH         => 6
+        )
+      port map
+        (clk_i         => clk_i
+        ,arst_b_i      => arst_b_i
+        ,sw_wd_i       => status_wdata_sw
+        ,sw_rd_o       => status_rdata_sw
+        ,sw_we_i       => status_we
+        ,sw_re_i       => status_re
+        ,sw_rbusy_o    => status_rbusy
+        ,sw_wbusy_o    => status_wbusy
+        ,hw_wd_i       => status_wdata_hw
+        ,hw_rd_o       => open
+        ,hw_we_i       => hw2sw_i.status.we
+        ,hw_sw_re_o    => sw2hw_o.status.re
+        ,hw_sw_we_o      => open
+        );
+
+  end generate gen_status;
+
+  gen_status_b: if not (True)
+  generate
+    status_rcs     <= '0';
+    status_rbusy   <= '0';
+    status_rdata   <= (others => '0');
+    status_wcs      <= '0';
+    status_wbusy    <= '0';
+    sw2hw_o.status.re <= '0';
+  end generate gen_status_b;
+
   gen_cfg: if (True)
   generate
   --==================================
@@ -387,15 +456,15 @@ begin  -- architecture rtl
     cfg_rcs     <= '1' when (sig_raddr = I2C_CFG) else '0';
     cfg_re      <= sig_rcs and sig_re and cfg_rcs;
     cfg_rdata   <= (
-      0 => cfg_rdata_sw(0), -- enable(0)
-      1 => cfg_rdata_sw(1), -- slave_addr(0)
-      2 => cfg_rdata_sw(2), -- slave_addr(1)
-      3 => cfg_rdata_sw(3), -- slave_addr(2)
-      4 => cfg_rdata_sw(4), -- slave_addr(3)
-      5 => cfg_rdata_sw(5), -- slave_addr(4)
-      6 => cfg_rdata_sw(6), -- slave_addr(5)
-      7 => cfg_rdata_sw(7), -- slave_addr(6)
-      others => '0');
+       0 => cfg_rdata_sw(0) -- enable(0)
+      ,1 => cfg_rdata_sw(1) -- slave_addr(0)
+      ,2 => cfg_rdata_sw(2) -- slave_addr(1)
+      ,3 => cfg_rdata_sw(3) -- slave_addr(2)
+      ,4 => cfg_rdata_sw(4) -- slave_addr(3)
+      ,5 => cfg_rdata_sw(5) -- slave_addr(4)
+      ,6 => cfg_rdata_sw(6) -- slave_addr(5)
+      ,7 => cfg_rdata_sw(7) -- slave_addr(6)
+      );
 
     cfg_wcs     <= '1' when       (sig_waddr = I2C_CFG)   else '0';
     cfg_we      <= sig_wcs and sig_we and cfg_wcs;
@@ -463,15 +532,15 @@ begin  -- architecture rtl
     prescaler_rcs     <= '1' when (sig_raddr = I2C_PRESCALER) else '0';
     prescaler_re      <= sig_rcs and sig_re and prescaler_rcs;
     prescaler_rdata   <= (
-      0 => prescaler_rdata_sw(0), -- ratio(0)
-      1 => prescaler_rdata_sw(1), -- ratio(1)
-      2 => prescaler_rdata_sw(2), -- ratio(2)
-      3 => prescaler_rdata_sw(3), -- ratio(3)
-      4 => prescaler_rdata_sw(4), -- ratio(4)
-      5 => prescaler_rdata_sw(5), -- ratio(5)
-      6 => prescaler_rdata_sw(6), -- ratio(6)
-      7 => prescaler_rdata_sw(7), -- ratio(7)
-      others => '0');
+       0 => prescaler_rdata_sw(0) -- ratio(0)
+      ,1 => prescaler_rdata_sw(1) -- ratio(1)
+      ,2 => prescaler_rdata_sw(2) -- ratio(2)
+      ,3 => prescaler_rdata_sw(3) -- ratio(3)
+      ,4 => prescaler_rdata_sw(4) -- ratio(4)
+      ,5 => prescaler_rdata_sw(5) -- ratio(5)
+      ,6 => prescaler_rdata_sw(6) -- ratio(6)
+      ,7 => prescaler_rdata_sw(7) -- ratio(7)
+      );
 
     prescaler_wcs     <= '1' when       (sig_waddr = I2C_PRESCALER)   else '0';
     prescaler_we      <= sig_wcs and sig_we and prescaler_wcs;
@@ -515,134 +584,26 @@ begin  -- architecture rtl
     sw2hw_o.prescaler.we <= '0';
   end generate gen_prescaler_b;
 
-  gen_status: if (True)
-  generate
-  --==================================
-  -- Register    : status
-  -- Description : I2C Status Register, read only (writes are ignored), read without latency
-  -- Address     : 0x4
-  -- Width       : 6
-  -- Sw Access   : rw
-  -- Hw Access   : wo
-  -- Hw Type     : ext
-  --==================================
-  --==================================
-  -- Field       : busy
-  -- Description : Master : 0 : no command in progress or pending, 1 : command in progress or pending
-  -- Width       : 1
-  --==================================
-
-  --==================================
-  -- Field       : nack
-  -- Description : Master : 1 : a NACK was received on a written byte since the last START generated from a released bus
-  -- Width       : 1
-  --==================================
-
-  --==================================
-  -- Field       : bus_busy
-  -- Description : 0 : bus free, 1 : START detected and no STOP since
-  -- Width       : 1
-  --==================================
-
-  --==================================
-  -- Field       : slave_addressed
-  -- Description : Slave : 1 : the slave address was acknowledged, until the next STOP or START
-  -- Width       : 1
-  --==================================
-
-  --==================================
-  -- Field       : slave_read
-  -- Description : Slave : direction of the last acknowledged address. 0 : the master writes, 1 : the master reads
-  -- Width       : 1
-  --==================================
-
-  --==================================
-  -- Field       : rx_empty
-  -- Description : 0 : at least one byte can be read in data, 1 : RX FIFO empty (a read of data waits for a byte)
-  -- Width       : 1
-  --==================================
-
-
-    status_rcs     <= '1' when (sig_raddr = I2C_STATUS) else '0';
-    status_re      <= sig_rcs and sig_re and status_rcs;
-    status_rdata   <= (
-      0 => status_rdata_sw(0), -- busy(0)
-      1 => status_rdata_sw(1), -- nack(0)
-      2 => status_rdata_sw(2), -- bus_busy(0)
-      3 => status_rdata_sw(3), -- slave_addressed(0)
-      4 => status_rdata_sw(4), -- slave_read(0)
-      5 => status_rdata_sw(5), -- rx_empty(0)
-      others => '0');
-
-    status_wcs     <= '1' when       (sig_waddr = I2C_STATUS)   else '0';
-    status_we      <= sig_wcs and sig_we and status_wcs;
-    status_wdata   <= sig_wdata;
-    status_wdata_sw(0 downto 0) <= status_wdata(0 downto 0); -- busy
-    status_wdata_sw(1 downto 1) <= status_wdata(1 downto 1); -- nack
-    status_wdata_sw(2 downto 2) <= status_wdata(2 downto 2); -- bus_busy
-    status_wdata_sw(3 downto 3) <= status_wdata(3 downto 3); -- slave_addressed
-    status_wdata_sw(4 downto 4) <= status_wdata(4 downto 4); -- slave_read
-    status_wdata_sw(5 downto 5) <= status_wdata(5 downto 5); -- rx_empty
-    status_wdata_hw(0 downto 0) <= hw2sw_i.status.busy; -- busy
-    status_wdata_hw(1 downto 1) <= hw2sw_i.status.nack; -- nack
-    status_wdata_hw(2 downto 2) <= hw2sw_i.status.bus_busy; -- bus_busy
-    status_wdata_hw(3 downto 3) <= hw2sw_i.status.slave_addressed; -- slave_addressed
-    status_wdata_hw(4 downto 4) <= hw2sw_i.status.slave_read; -- slave_read
-    status_wdata_hw(5 downto 5) <= hw2sw_i.status.rx_empty; -- rx_empty
-
-    ins_status : csr_ext
-      generic map
-        (WIDTH         => 6
-        )
-      port map
-        (clk_i         => clk_i
-        ,arst_b_i      => arst_b_i
-        ,sw_wd_i       => status_wdata_sw
-        ,sw_rd_o       => status_rdata_sw
-        ,sw_we_i       => status_we
-        ,sw_re_i       => status_re
-        ,sw_rbusy_o    => status_rbusy
-        ,sw_wbusy_o    => status_wbusy
-        ,hw_wd_i       => status_wdata_hw
-        ,hw_rd_o       => open
-        ,hw_we_i       => hw2sw_i.status.we
-        ,hw_sw_re_o    => sw2hw_o.status.re
-        ,hw_sw_we_o    => sw2hw_o.status.we
-        );
-
-  end generate gen_status;
-
-  gen_status_b: if not (True)
-  generate
-    status_rcs     <= '0';
-    status_rbusy   <= '0';
-    status_rdata   <= (others => '0');
-    status_wcs      <= '0';
-    status_wbusy    <= '0';
-    sw2hw_o.status.re <= '0';
-    sw2hw_o.status.we <= '0';
-  end generate gen_status_b;
-
   sig_wbusy <= 
     data_wbusy when data_wcs = '1' else
     cmd_wbusy when cmd_wcs = '1' else
+    status_wbusy when status_wcs = '1' else
     cfg_wbusy when cfg_wcs = '1' else
     prescaler_wbusy when prescaler_wcs = '1' else
-    status_wbusy when status_wcs = '1' else
     '0'; -- Bad Address, no busy
   sig_rbusy <= 
     data_rbusy when data_rcs = '1' else
     cmd_rbusy when cmd_rcs = '1' else
+    status_rbusy when status_rcs = '1' else
     cfg_rbusy when cfg_rcs = '1' else
     prescaler_rbusy when prescaler_rcs = '1' else
-    status_rbusy when status_rcs = '1' else
     '0'; -- Bad Address, no busy
   sig_rdata <= 
     data_rdata when data_rcs = '1' else
     cmd_rdata when cmd_rcs = '1' else
+    status_rdata when status_rcs = '1' else
     cfg_rdata when cfg_rcs = '1' else
     prescaler_rdata when prescaler_rcs = '1' else
-    status_rdata when status_rcs = '1' else
     (others => '0'); -- Bad Address, return 0
 
   gen_tgt_info_name : if MODULE_NAME = ""

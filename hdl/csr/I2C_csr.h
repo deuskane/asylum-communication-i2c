@@ -22,7 +22,7 @@
 
 //==================================
 // Register    : cmd
-// Description : Master Command FIFO. Each command is executed in this order : START (if start), byte (if op), STOP (if stop)
+// Description : Master Command FIFO, write only (a read returns status). Each command is executed in this order : START (if start), byte (if op), STOP (if stop)
 // Address     : 0x1
 //==================================
 #define I2C_CMD 0x1
@@ -86,43 +86,11 @@
 #define I2C_CMD_OP_READ_NACK_RAW (3<<2)
 
 //==================================
-// Register    : cfg
-// Description : I2C Configuration Register
-// Address     : 0x2
-//==================================
-#define I2C_CFG 0x2
-
-// Field       : cfg.enable
-// Description : 0 : I2C is disabled (held in reset, SCL and SDA released), 1 : I2C is enabled
-// Range       : [0]
-#define I2C_CFG_ENABLE      0
-#define I2C_CFG_ENABLE_MASK 1
-
-// Field       : cfg.slave_addr
-// Description : 7-bit address of the slave. 0 : slave disabled (0 is the general call address)
-// Range       : [7:1]
-#define I2C_CFG_SLAVE_ADDR      1
-#define I2C_CFG_SLAVE_ADDR_MASK 127
-
-//==================================
-// Register    : prescaler
-// Description : I2C Clock Prescaler. Master : SCL period is 4*(prescaler+1)+2 CLK cycles (the 2 cycles of synchronization of SCL extend the high phase). Slave : the data setup time after a clock stretching is (prescaler+1) CLK cycles
-// Address     : 0x3
-//==================================
-#define I2C_PRESCALER 0x3
-
-// Field       : prescaler.ratio
-// Description : Number of CLK cycles minus one of a quarter of SCL period
-// Range       : [7:0]
-#define I2C_PRESCALER_RATIO      0
-#define I2C_PRESCALER_RATIO_MASK 255
-
-//==================================
 // Register    : status
-// Description : I2C Status Register, read only (writes are ignored), read without latency
-// Address     : 0x4
+// Description : I2C Status Register, read at the address of cmd (cmd is write only), without latency
+// Address     : 0x1
 //==================================
-#define I2C_STATUS 0x4
+#define I2C_STATUS 0x1
 
 // Field       : status.busy
 // Description : Master : 0 : no command in progress or pending, 1 : command in progress or pending
@@ -160,15 +128,46 @@
 #define I2C_STATUS_RX_EMPTY      5
 #define I2C_STATUS_RX_EMPTY_MASK 1
 
+//==================================
+// Register    : cfg
+// Description : I2C Configuration Register
+// Address     : 0x2
+//==================================
+#define I2C_CFG 0x2
+
+// Field       : cfg.enable
+// Description : 0 : I2C is disabled (held in reset, SCL and SDA released), 1 : I2C is enabled
+// Range       : [0]
+#define I2C_CFG_ENABLE      0
+#define I2C_CFG_ENABLE_MASK 1
+
+// Field       : cfg.slave_addr
+// Description : 7-bit address of the slave. 0 : slave disabled (0 is the general call address)
+// Range       : [7:1]
+#define I2C_CFG_SLAVE_ADDR      1
+#define I2C_CFG_SLAVE_ADDR_MASK 127
+
+//==================================
+// Register    : prescaler
+// Description : I2C Clock Prescaler. Master : SCL period is 4*(prescaler+1)+2 CLK cycles (the 2 cycles of synchronization of SCL extend the high phase). Slave : the data setup time after a clock stretching is (prescaler+1) CLK cycles
+// Address     : 0x3
+//==================================
+#define I2C_PRESCALER 0x3
+
+// Field       : prescaler.ratio
+// Description : Number of CLK cycles minus one of a quarter of SCL period
+// Range       : [7:0]
+#define I2C_PRESCALER_RATIO      0
+#define I2C_PRESCALER_RATIO_MASK 255
+
 //----------------------------------
 // Structure I2C_t
 //----------------------------------
 typedef struct {
   uint8_t data; // 0x0
-  uint8_t cmd; // 0x1
+  uint8_t cmd_status; // 0x1
   uint8_t cfg; // 0x2
   uint8_t prescaler; // 0x3
-  uint8_t status; // 0x4
 } I2C_t;
 
 #endif // I2C_REGISTERS_H

@@ -31,7 +31,7 @@
         <mxCell id="r_pre" parent="1" style="rounded=0;whiteSpace=wrap;html=1;fillColor=#fff2cc;strokeColor=#d6b656;" value="prescaler : ratio (USER_DEFINE_PRESCALER)" vertex="1">
           <mxGeometry height="30" width="180" x="220" y="485" as="geometry" />
         </mxCell>
-        <mxCell id="r_sts" parent="1" style="rounded=0;whiteSpace=wrap;html=1;fillColor=#fff2cc;strokeColor=#d6b656;" value="status : busy, nack, bus_busy, slave_addressed, slave_read, rx_empty" vertex="1">
+        <mxCell id="r_sts" parent="1" style="rounded=0;whiteSpace=wrap;html=1;fillColor=#fff2cc;strokeColor=#d6b656;" value="status (read at the address of cmd) : busy, nack, bus_busy, slave_addressed, slave_read, rx_empty" vertex="1">
           <mxGeometry height="50" width="180" x="220" y="530" as="geometry" />
         </mxCell>
         <mxCell id="core" parent="1" style="rounded=0;whiteSpace=wrap;html=1;fillColor=#dae8fc;strokeColor=#6c8ebf;verticalAlign=top;fontStyle=1;" value="i2c_core (reset while cfg.enable = 0)" vertex="1">
