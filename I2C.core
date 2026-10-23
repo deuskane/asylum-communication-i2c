@@ -51,7 +51,7 @@ filesets:
     file_type    : vhdlSource
     logical_name : asylum
     depend       :
-      - asylum:utils:generators
+      - ">=asylum:utils:generators:2.8.0"
       - asylum:utils:pkg
       - asylum:target:techmap
 
@@ -76,12 +76,11 @@ filesets:
   #---------------------------------------
   # Lint Files (pre_run hook of lint_ghdl_synth_*)
   #---------------------------------------
-  files_lint:
+  syn:
     files:
-      - syn/ghdl/sbi_I2C_synth_top.vhd
-      - syn/ghdl/ghdl_synth.sh : {file_type : user, copyto : ghdl_synth.sh}
-      - syn/ghdl/ghdl_synth.mk : {file_type : user, copyto : ghdl_synth.mk}
-    file_type : vhdlSource-2008
+      - syn/sbi_I2C_wrapper.vhd
+    file_type    : vhdlSource-2008
+    logical_name : asylum
 
 #=========================================
 targets:
@@ -103,9 +102,9 @@ targets:
   #---------------------------------------
   lint_ghdl : &lint_ghdl
     << : *default
-    description     : Lint with GHDL (-Wall analysis and elaboration of sbi_I2C_synth_top)
-    toplevel        : sbi_I2C_synth_top
-    filesets_append : [files_lint]
+    description     : Lint with GHDL (-Wall analysis and elaboration of sbi_I2C_wrapper)
+    toplevel        : asylum.sbi_I2C_wrapper
+    filesets_append : [syn]
     default_tool    : ghdl
     tools :
       ghdl :
@@ -113,13 +112,13 @@ targets:
 
   #---------------------------------------
   # Synthesis check : -Wall analysis, ghdl --synth -Wall and elaboration
-  # (no simulation) of sbi_I2C_synth_top with the generics of the target.
+  # (no simulation) of sbi_I2C_wrapper with the generics of the target.
   # The pre_run hook adds syn/ghdl/ghdl_synth.mk to the edalize Makefile.
   # FuseSoC merges tools in depth : analyze_options comes from lint_ghdl.
   #---------------------------------------
   lint_ghdl_synth_default : &lint_ghdl_synth
     << : *lint_ghdl
-    description     : Synthesis check of sbi_I2C_synth_top, default generics
+    description     : Synthesis check of sbi_I2C_wrapper, default generics
     tools :
       ghdl :
         run_options     : ["--no-run"]
@@ -130,7 +129,7 @@ targets:
   lint_ghdl_synth_sim :
   #---------------------------------------
     << : *lint_ghdl_synth
-    description     : Synthesis check of sbi_I2C_synth_top, generics of the sim_* targets
+    description     : Synthesis check of sbi_I2C_wrapper, generics of the sim_* targets
     parameters      :
       - DEPTH_CMD=4
       - DEPTH_TX=8
@@ -140,7 +139,7 @@ targets:
   lint_ghdl_synth_master_only :
   #---------------------------------------
     << : *lint_ghdl_synth
-    description     : Synthesis check of sbi_I2C_synth_top, master only
+    description     : Synthesis check of sbi_I2C_wrapper, master only
     parameters      :
       - SLAVE_ENABLE=false
 
@@ -148,7 +147,7 @@ targets:
   lint_ghdl_synth_slave_only :
   #---------------------------------------
     << : *lint_ghdl_synth
-    description     : Synthesis check of sbi_I2C_synth_top, slave only (no cmd register)
+    description     : Synthesis check of sbi_I2C_wrapper, slave only (no cmd register)
     parameters      :
       - MASTER_ENABLE=false
 
@@ -156,7 +155,7 @@ targets:
   lint_ghdl_synth_fixed_prescaler :
   #---------------------------------------
     << : *lint_ghdl_synth
-    description     : Synthesis check of sbi_I2C_synth_top, fixed prescaler
+    description     : Synthesis check of sbi_I2C_wrapper, fixed prescaler
     parameters      :
       - USER_DEFINE_PRESCALER=false
       - PRESCALER_RATIO=00011000
@@ -337,7 +336,7 @@ parameters :
     paramtype   : generic
 
   #---------------------------------------
-  # Generics of sbi_I2C_synth_top (lint_ghdl_synth_*)
+  # Generics of sbi_I2C_wrapper (lint_ghdl_synth_*)
   #---------------------------------------
   USER_DEFINE_PRESCALER :
     description : true, prescaler register writable by software ; false, ratio fixed to PRESCALER_RATIO

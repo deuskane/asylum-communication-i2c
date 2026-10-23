@@ -1,11 +1,11 @@
 default                         : Default Target
 default_sim                     : Default Target for simulation (tb_I2C, TEST=master_write)
-lint_ghdl                       : Lint with GHDL (-Wall analysis and elaboration of sbi_I2C_synth_top)
-lint_ghdl_synth_default         : Synthesis check of sbi_I2C_synth_top, default generics
-lint_ghdl_synth_fixed_prescaler : Synthesis check of sbi_I2C_synth_top, fixed prescaler
-lint_ghdl_synth_master_only     : Synthesis check of sbi_I2C_synth_top, master only
-lint_ghdl_synth_sim             : Synthesis check of sbi_I2C_synth_top, generics of the sim_* targets
-lint_ghdl_synth_slave_only      : Synthesis check of sbi_I2C_synth_top, slave only (no cmd register)
+lint_ghdl                       : Lint with GHDL (-Wall analysis and elaboration of sbi_I2C_wrapper)
+lint_ghdl_synth_default         : Synthesis check of sbi_I2C_wrapper, default generics
+lint_ghdl_synth_fixed_prescaler : Synthesis check of sbi_I2C_wrapper, fixed prescaler
+lint_ghdl_synth_master_only     : Synthesis check of sbi_I2C_wrapper, master only
+lint_ghdl_synth_sim             : Synthesis check of sbi_I2C_wrapper, generics of the sim_* targets
+lint_ghdl_synth_slave_only      : Synthesis check of sbi_I2C_wrapper, slave only (no cmd register)
 sim_disabled                    : BFM master addresses a disabled I2C (NACK, pads released)
 sim_master_nack                 : DUT master writes to an absent slave (NACK)
 sim_master_prescaler            : DUT master SCL period with prescaler 9

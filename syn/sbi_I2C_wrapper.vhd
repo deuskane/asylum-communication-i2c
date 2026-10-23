@@ -1,8 +1,8 @@
 -------------------------------------------------------------------------------
--- Title      : sbi_I2C_synth_top
+-- Title      : sbi_I2C_wrapper
 -- Project    : Asylum
 -------------------------------------------------------------------------------
--- File       : sbi_I2C_synth_top.vhd
+-- File       : sbi_I2C_wrapper.vhd
 -- Author     : Mathieu Rosiere
 -------------------------------------------------------------------------------
 -- Description:
@@ -25,7 +25,7 @@ use     ieee.std_logic_1164.all;
 library asylum;
 use     asylum.sbi_pkg.all;
 
-entity sbi_I2C_synth_top is
+entity sbi_I2C_wrapper is
   generic (
     USER_DEFINE_PRESCALER : boolean                        := true;
     PRESCALER_RATIO       : std_logic_vector(8-1 downto 0) := x"7C";
@@ -56,9 +56,9 @@ entity sbi_I2C_synth_top is
     sda_o         : out std_logic;
     sda_oe_o      : out std_logic
   );
-end entity sbi_I2C_synth_top;
+end entity sbi_I2C_wrapper;
 
-architecture rtl of sbi_I2C_synth_top is
+architecture rtl of sbi_I2C_wrapper is
 
   signal sbi_ini       : sbi_ini_t(addr (SBI_ADDR_WIDTH-1 downto 0),
                                    wdata(SBI_DATA_WIDTH-1 downto 0));
