@@ -1,0 +1,24 @@
+default                         : Default Target
+default_sim                     : Default Target for simulation (tb_I2C, TEST=master_write)
+lint_ghdl                       : Lint with GHDL (-Wall analysis and elaboration of sbi_I2C_synth_top)
+lint_ghdl_synth_default         : Synthesis check of sbi_I2C_synth_top, default generics
+lint_ghdl_synth_fixed_prescaler : Synthesis check of sbi_I2C_synth_top, fixed prescaler
+lint_ghdl_synth_master_only     : Synthesis check of sbi_I2C_synth_top, master only
+lint_ghdl_synth_sim             : Synthesis check of sbi_I2C_synth_top, generics of the sim_* targets
+lint_ghdl_synth_slave_only      : Synthesis check of sbi_I2C_synth_top, slave only (no cmd register)
+sim_disabled                    : BFM master addresses a disabled I2C (NACK, pads released)
+sim_master_nack                 : DUT master writes to an absent slave (NACK)
+sim_master_prescaler            : DUT master SCL period with prescaler 9
+sim_master_read                 : DUT master reads from the BFM slave
+sim_master_stretch              : DUT master write with SCL stretched by the bench
+sim_master_write                : DUT master writes to the BFM slave, SCL period (prescaler 4)
+sim_master_write_read           : DUT master write + repeated START + read (register read)
+sim_multi_slave                 : One master and 3 slaves sbi_I2C on the same bus
+sim_reset_values                : Reset values of the registers
+sim_slave_disabled              : BFM master addresses a disabled slave (NACK)
+sim_slave_read                  : BFM master reads from the DUT slave
+sim_slave_stretch               : BFM master reads from the DUT slave, TX FIFO empty (clock stretching)
+sim_slave_write                 : BFM master writes to the DUT slave
+sim_slave_write_read            : BFM master write + repeated START + read from the DUT slave
+sim_slave_wrong_address         : BFM master addresses an other slave (NACK)
+
