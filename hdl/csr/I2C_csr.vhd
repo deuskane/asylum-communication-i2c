@@ -235,6 +235,10 @@ begin  -- architecture rtl
     data_wcs      <= '0';
     data_wbusy    <= '0';
     sw2hw_o.data.value <= "00000000";
+    sw2hw_o.data.sw2hw_empty <= '1';
+    sw2hw_o.data.sw2hw_full  <= '0';
+    sw2hw_o.data.hw2sw_empty <= '1';
+    sw2hw_o.data.hw2sw_full  <= '0';
     sw2hw_o.data.ready <= '0';
     sw2hw_o.data.valid <= '0';
   end generate gen_data_b;
@@ -323,6 +327,8 @@ begin  -- architecture rtl
     sw2hw_o.cmd.start <= "0";
     sw2hw_o.cmd.stop <= "0";
     sw2hw_o.cmd.op <= "00";
+    sw2hw_o.cmd.sw2hw_empty <= '1';
+    sw2hw_o.cmd.sw2hw_full  <= '0';
     sw2hw_o.cmd.valid <= '0';
   end generate gen_cmd_b;
 

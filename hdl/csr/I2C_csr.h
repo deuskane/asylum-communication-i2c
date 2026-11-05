@@ -35,13 +35,13 @@
 
 // Enum        : cmd.start.DISABLE
 // Description : no START
-#define I2C_CMD_START_DISABLE     0
-#define I2C_CMD_START_DISABLE_RAW (0<<0)
+#define I2C_CMD_START_DISABLE     0x0
+#define I2C_CMD_START_DISABLE_RAW (0x0<<0)
 
 // Enum        : cmd.start.ENABLE
 // Description : START or repeated START before the byte
-#define I2C_CMD_START_ENABLE     1
-#define I2C_CMD_START_ENABLE_RAW (1<<0)
+#define I2C_CMD_START_ENABLE     0x1
+#define I2C_CMD_START_ENABLE_RAW (0x1<<0)
 
 // Field       : cmd.stop
 // Description : Generate a STOP condition after the byte (ignored if the master does not own the bus)
@@ -51,13 +51,13 @@
 
 // Enum        : cmd.stop.DISABLE
 // Description : no STOP, the master keeps the bus
-#define I2C_CMD_STOP_DISABLE     0
-#define I2C_CMD_STOP_DISABLE_RAW (0<<1)
+#define I2C_CMD_STOP_DISABLE     0x0
+#define I2C_CMD_STOP_DISABLE_RAW (0x0<<1)
 
 // Enum        : cmd.stop.ENABLE
 // Description : STOP after the byte, the bus is released
-#define I2C_CMD_STOP_ENABLE     1
-#define I2C_CMD_STOP_ENABLE_RAW (1<<1)
+#define I2C_CMD_STOP_ENABLE     0x1
+#define I2C_CMD_STOP_ENABLE_RAW (0x1<<1)
 
 // Field       : cmd.op
 // Description : Byte operation
@@ -67,23 +67,23 @@
 
 // Enum        : cmd.op.NONE
 // Description : no byte (START and/or STOP only)
-#define I2C_CMD_OP_NONE     0
-#define I2C_CMD_OP_NONE_RAW (0<<2)
+#define I2C_CMD_OP_NONE     0x0
+#define I2C_CMD_OP_NONE_RAW (0x0<<2)
 
 // Enum        : cmd.op.WRITE
 // Description : write a byte popped from the TX FIFO, the acknowledge of the slave updates status.nack
-#define I2C_CMD_OP_WRITE     1
-#define I2C_CMD_OP_WRITE_RAW (1<<2)
+#define I2C_CMD_OP_WRITE     0x1
+#define I2C_CMD_OP_WRITE_RAW (0x1<<2)
 
 // Enum        : cmd.op.READ_ACK
 // Description : read a byte pushed into the RX FIFO, answer ACK (more bytes to read)
-#define I2C_CMD_OP_READ_ACK     2
-#define I2C_CMD_OP_READ_ACK_RAW (2<<2)
+#define I2C_CMD_OP_READ_ACK     0x2
+#define I2C_CMD_OP_READ_ACK_RAW (0x2<<2)
 
 // Enum        : cmd.op.READ_NACK
 // Description : read a byte pushed into the RX FIFO, answer NACK (last byte to read)
-#define I2C_CMD_OP_READ_NACK     3
-#define I2C_CMD_OP_READ_NACK_RAW (3<<2)
+#define I2C_CMD_OP_READ_NACK     0x3
+#define I2C_CMD_OP_READ_NACK_RAW (0x3<<2)
 
 //==================================
 // Register    : status

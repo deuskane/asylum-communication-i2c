@@ -40,7 +40,7 @@
 
 **I2C master / slave with CSR access over the SBI bus, a master command FIFO, shared TX / RX FIFOs and clock stretching.**
 
-VLNV: `asylum:communication:I2C:1.0.0`
+VLNV: `asylum:communication:I2C`
 
 ## Table of Contents
 
@@ -57,7 +57,15 @@ VLNV: `asylum:communication:I2C:1.0.0`
 
 ## Introduction
 
-This IP is the I2C controller of the Asylum project. Software drives it through 5 registers at 4 addresses on the SBI bus (`status` is read at the address of the write-only `cmd`). As a master, each step of a transfer (START, byte, STOP) is a command pushed into a command FIFO: the bytes to write (address byte included) go through a TX FIFO and the bytes read come back through an RX FIFO. As a slave, it answers to the 7-bit address `cfg.slave_addr`: the bytes written by the remote master are pushed into the RX FIFO, the bytes read by the remote master are popped from the TX FIFO, and SCL is stretched while a FIFO is not ready. The protocol is implemented by `i2c_core`, which is independent of the CSR and of the bus interface (AXI Stream like channels, plain configuration and status signals).
+This IP is the I2C controller of the Asylum project.
+
+Software drives it through 5 registers at 4 addresses on the SBI bus (`status` is read at the address of the write-only `cmd`).
+
+As a master, each step of a transfer (START, byte, STOP) is a command pushed into a command FIFO: the bytes to write (address byte included) go through a TX FIFO and the bytes read come back through an RX FIFO.
+
+As a slave, it answers to the 7-bit address `cfg.slave_addr`: the bytes written by the remote master are pushed into the RX FIFO, the bytes read by the remote master are popped from the TX FIFO, and SCL is stretched while a FIFO is not ready.
+
+The protocol is implemented by `i2c_core`, which is independent of the CSR and of the bus interface (AXI Stream like channels, plain configuration and status signals).
 
 ### Key Features
 

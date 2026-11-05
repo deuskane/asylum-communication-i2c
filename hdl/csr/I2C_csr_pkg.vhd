@@ -100,42 +100,42 @@ package I2C_csr_pkg is
 -- Enum        : cmd.start.DISABLE
 -- Description : no START
 constant I2C_CMD_START_DISABLE     : std_logic_vector(1-1 downto 0) := "0";
-constant I2C_CMD_START_DISABLE_RAW : std_logic_vector(4-1 downto 0) := "0000";
+constant I2C_CMD_START_DISABLE_RAW : std_logic_vector(8-1 downto 0) := "00000000";
 
 -- Enum        : cmd.start.ENABLE
 -- Description : START or repeated START before the byte
 constant I2C_CMD_START_ENABLE     : std_logic_vector(1-1 downto 0) := "1";
-constant I2C_CMD_START_ENABLE_RAW : std_logic_vector(4-1 downto 0) := "0001";
+constant I2C_CMD_START_ENABLE_RAW : std_logic_vector(8-1 downto 0) := "00000001";
 
 -- Enum        : cmd.stop.DISABLE
 -- Description : no STOP, the master keeps the bus
 constant I2C_CMD_STOP_DISABLE     : std_logic_vector(1-1 downto 0) := "0";
-constant I2C_CMD_STOP_DISABLE_RAW : std_logic_vector(4-1 downto 0) := "0000";
+constant I2C_CMD_STOP_DISABLE_RAW : std_logic_vector(8-1 downto 0) := "00000000";
 
 -- Enum        : cmd.stop.ENABLE
 -- Description : STOP after the byte, the bus is released
 constant I2C_CMD_STOP_ENABLE     : std_logic_vector(1-1 downto 0) := "1";
-constant I2C_CMD_STOP_ENABLE_RAW : std_logic_vector(4-1 downto 0) := "0010";
+constant I2C_CMD_STOP_ENABLE_RAW : std_logic_vector(8-1 downto 0) := "00000010";
 
 -- Enum        : cmd.op.NONE
 -- Description : no byte (START and/or STOP only)
 constant I2C_CMD_OP_NONE     : std_logic_vector(2-1 downto 0) := "00";
-constant I2C_CMD_OP_NONE_RAW : std_logic_vector(4-1 downto 0) := "0000";
+constant I2C_CMD_OP_NONE_RAW : std_logic_vector(8-1 downto 0) := "00000000";
 
 -- Enum        : cmd.op.WRITE
 -- Description : write a byte popped from the TX FIFO, the acknowledge of the slave updates status.nack
 constant I2C_CMD_OP_WRITE     : std_logic_vector(2-1 downto 0) := "01";
-constant I2C_CMD_OP_WRITE_RAW : std_logic_vector(4-1 downto 0) := "0100";
+constant I2C_CMD_OP_WRITE_RAW : std_logic_vector(8-1 downto 0) := "00000100";
 
 -- Enum        : cmd.op.READ_ACK
 -- Description : read a byte pushed into the RX FIFO, answer ACK (more bytes to read)
 constant I2C_CMD_OP_READ_ACK     : std_logic_vector(2-1 downto 0) := "10";
-constant I2C_CMD_OP_READ_ACK_RAW : std_logic_vector(4-1 downto 0) := "1000";
+constant I2C_CMD_OP_READ_ACK_RAW : std_logic_vector(8-1 downto 0) := "00001000";
 
 -- Enum        : cmd.op.READ_NACK
 -- Description : read a byte pushed into the RX FIFO, answer NACK (last byte to read)
 constant I2C_CMD_OP_READ_NACK     : std_logic_vector(2-1 downto 0) := "11";
-constant I2C_CMD_OP_READ_NACK_RAW : std_logic_vector(4-1 downto 0) := "1100";
+constant I2C_CMD_OP_READ_NACK_RAW : std_logic_vector(8-1 downto 0) := "00001100";
 
   --==================================
   -- Register    : status
