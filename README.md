@@ -20,6 +20,8 @@
       software-visible registers."), never removed.
 -->
 [![CI](https://github.com/deuskane/asylum-communication-i2c/actions/workflows/ci.yml/badge.svg)](https://github.com/deuskane/asylum-communication-i2c/actions/workflows/ci.yml)
+[![sim](https://img.shields.io/endpoint?url=https%3A%2F%2Fraw.githubusercontent.com%2Fdeuskane%2Fasylum-communication-i2c%2Fbadges%2Fsim.json)](https://github.com/deuskane/asylum-communication-i2c/actions/workflows/ci.yml)
+[![lint](https://img.shields.io/endpoint?url=https%3A%2F%2Fraw.githubusercontent.com%2Fdeuskane%2Fasylum-communication-i2c%2Fbadges%2Flint.json)](https://github.com/deuskane/asylum-communication-i2c/actions/workflows/ci.yml)
 [![Version](https://img.shields.io/github/v/tag/deuskane/asylum-communication-i2c?filter=asylum-communication-I2C-*&label=version)](https://github.com/deuskane/asylum-communication-i2c/tags)
 [![License](https://img.shields.io/github/license/deuskane/asylum-communication-i2c)](LICENSE)
 
@@ -409,7 +411,7 @@ One target per scenario, each one starts from reset and runs alone (in parallel 
 | `lint_ghdl` | GHDL `-Wall` analysis and elaboration of [syn/sbi_I2C_wrapper.vhd](syn/sbi_I2C_wrapper.vhd) |
 | `lint_ghdl_synth_<config>` | `ghdl --synth` check for 5 generic configurations: `default`, `sim`, `master_only`, `slave_only`, `fixed_prescaler` |
 
-Every `sim_*` target is a job of the [GitHub CI](https://github.com/deuskane/asylum-communication-i2c/actions/workflows/ci.yml), run in the [asylum-env](https://github.com/deuskane/asylum-ci) image (GHDL, FuseSoC, UVVM).
+Every `sim_*` and `lint_*` target is a job of the [GitHub CI](https://github.com/deuskane/asylum-communication-i2c/actions/workflows/ci.yml), run in the [asylum-env](https://github.com/deuskane/asylum-ci) image (GHDL, FuseSoC, UVVM). The `sim` and `lint` badges count the passed and failed targets of the last run on `main`.
 
 ### How to Run
 
