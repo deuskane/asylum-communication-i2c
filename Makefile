@@ -16,6 +16,7 @@
 # 2026-09-29  1.2      mrosiere Add all nonreg variant depends of type and step
 # 2026-10-01  1.3      mrosiere Add log directory and log file for each target
 # 2026-10-04  1.4      mrosiere Add ci_generate target to generate GitHub Actions jobs
+# 2026-11-19  1.5      mrosiere ci_generate : lint_* jobs and badges job
 #-----------------------------------------------------------------------------
 
 #=============================================================================
@@ -206,10 +207,47 @@ $(CI_WORKFLOW) : $(FILE_TARGETS)
 	fi
 
 #--------------------------------------------------------
+# Script of ci_generate : one job per sim_* and lint_* target, then the badges
+# job (pass / fail counts published on the badges branch, push on main only)
+define CI_GENERATE_PY
+import sys
+from pathlib import Path
+targets    = sys.argv[1].split()
+path       = Path(sys.argv[2])
+text       = path.read_text()
+start, end = "#<GENERATE_BEGIN>", "#<GENERATE_END>"
+assert start in text and end in text, f"Markers {start!r} and {end!r} not found in {path}"
+if not targets:
+    jobs = ("  noop:\n"
+            "    name: No-op (CI temporarily disabled)\n"
+            "    runs-on: ubuntu-latest\n"
+            "    steps:\n"
+            "      - name: Empty workflow\n"
+            "        run: echo \"No job defined at this time.\"\n")
+else:
+    jobs = "".join(f"  {t}:\n"
+                   f"    uses: deuskane/asylum-ci/.github/workflows/vhdl-ci.yml@main\n"
+                   f"    with:\n"
+                   f"      name: {t}\n\n" for t in targets)
+    jobs += ("  badges:\n"
+             f"    needs: [{', '.join(targets)}]\n"
+             "    if: always() && github.event_name == 'push' && github.ref == 'refs/heads/main'\n"
+             "    permissions:\n"
+             "      contents: write\n"
+             "    uses: deuskane/asylum-ci/.github/workflows/badges.yml@main\n"
+             "    with:\n"
+             "      results: $${{ toJSON(needs) }}\n\n")
+i = text.index(start)
+j = text.index(end, i)
+path.write_text(text[:i] + start + "\n" + jobs + text[j:])
+endef
+export CI_GENERATE_PY
+
+#--------------------------------------------------------
 # Generate CI jobs between markers only
 ci_generate : $(CI_WORKFLOW) $(FILE_TARGETS)
 #--------------------------------------------------------
-	@python3 -c 'import sys; from pathlib import Path; targets = [t for t in sys.argv[1].split() if t]; path = Path(sys.argv[2]); text = path.read_text(); start = "#<GENERATE_BEGIN>"; end = "#<GENERATE_END>"; assert start in text and end in text, f"Markers {start!r} and {end!r} not found in {path}"; start_idx = text.index(start); end_idx = text.index(end, start_idx); jobs = "  noop:\n    name: No-op (CI temporarily disabled)\n    runs-on: ubuntu-latest\n    steps:\n      - name: Empty workflow\n        run: echo \"No job defined at this time.\"\n" if not targets else "".join(f"  {t}:\n    uses: deuskane/asylum-ci/.github/workflows/vhdl-ci.yml@main\n    with:\n      name: {t}\n\n" for t in targets); new_text = text[:start_idx] + start + "\n" + jobs + end + text[end_idx + len(end):]; path.write_text(new_text)' "$(TARGETS_SIM)" "$<"
+	@python3 -c "$$CI_GENERATE_PY" "$(TARGETS_SIM) $(TARGETS_LINT)" "$<"
 #--------------------------------------------------------
 # Generate nonreg_<type> and nonreg_<type>_<stage> rules
 NONREG_UPPER = $(shell printf '%s' '$(1)' | tr '[:lower:]' '[:upper:]')
