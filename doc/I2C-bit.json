@@ -1,0 +1,45 @@
+{
+ "signal": [
+  {
+   "name": "quarter",
+   "wave": "========",
+   "data": [
+    "0",
+    "1",
+    "2",
+    "3",
+    "0",
+    "1",
+    "2",
+    "3"
+   ]
+  },
+  {},
+  {
+   "name": "SCL",
+   "wave": "0.1.0.1."
+  },
+  {
+   "name": "SDA",
+   "wave": "53...4..",
+   "data": [
+    "bit n-1",
+    "bit n",
+    "bit n+1"
+   ]
+  },
+  {
+   "name": "SDA sampled",
+   "wave": "0..Hl..H"
+  }
+ ],
+ "head": {
+  "text": "I2C master bit: one SCL period = 4 quarters of (ratio + 1) clock cycles"
+ },
+ "foot": {
+  "text": "SDA changes in the middle of the low phase (quarter 1), sampled in the middle of the high phase (quarter 3)"
+ },
+ "config": {
+  "hscale": 2
+ }
+}

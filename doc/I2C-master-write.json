@@ -1,0 +1,44 @@
+{
+ "signal": [
+  {
+   "name": "cmd",
+   "wave": "z3.....4......z",
+   "data": [
+    "0x05: START + WRITE",
+    "0x06: WRITE + STOP"
+   ]
+  },
+  {
+   "name": "data (TX)",
+   "wave": "z3.....4......z",
+   "data": [
+    "(A << 1) | 0",
+    "D"
+   ]
+  },
+  {},
+  {
+   "name": "SCL",
+   "wave": "1.n..|....|..h."
+  },
+  {
+   "name": "SDA",
+   "wave": "103..|54..|501.",
+   "data": [
+    "A[6:0], W",
+    "ACK",
+    "D[7:0]",
+    "ACK"
+   ]
+  }
+ ],
+ "head": {
+  "text": "I2C master write of one byte D to the slave at address A"
+ },
+ "foot": {
+  "text": "START and STOP: SDA changes while SCL is high. Yellow and orange: driven by the master, blue: ACK driven by the slave. 8 data bits drawn compressed."
+ },
+ "config": {
+  "hscale": 2
+ }
+}
