@@ -1,24 +1,30 @@
 default                         : Default Target
-default_sim                     : Default Target for simulation (tb_I2C, TEST=master_write)
 lint_ghdl                       : Lint with GHDL (-Wall analysis and elaboration of sbi_I2C_wrapper)
 lint_ghdl_synth_default         : Synthesis check of sbi_I2C_wrapper, default generics
 lint_ghdl_synth_fixed_prescaler : Synthesis check of sbi_I2C_wrapper, fixed prescaler
 lint_ghdl_synth_master_only     : Synthesis check of sbi_I2C_wrapper, master only
 lint_ghdl_synth_sim             : Synthesis check of sbi_I2C_wrapper, generics of the sim_* targets
 lint_ghdl_synth_slave_only      : Synthesis check of sbi_I2C_wrapper, slave only (no cmd register)
-sim_disabled                    : BFM master addresses a disabled I2C (NACK, pads released)
-sim_master_nack                 : DUT master writes to an absent slave (NACK)
-sim_master_prescaler            : DUT master SCL period with prescaler 9
-sim_master_read                 : DUT master reads from the BFM slave
-sim_master_stretch              : DUT master write with SCL stretched by the bench
-sim_master_write                : DUT master writes to the BFM slave, SCL period (prescaler 4)
-sim_master_write_read           : DUT master write + repeated START + read (register read)
-sim_multi_slave                 : One master and 3 slaves sbi_I2C on the same bus
-sim_reset_values                : Reset values of the registers
-sim_slave_disabled              : BFM master addresses a disabled slave (NACK)
-sim_slave_read                  : BFM master reads from the DUT slave
-sim_slave_stretch               : BFM master reads from the DUT slave, TX FIFO empty (clock stretching)
-sim_slave_write                 : BFM master writes to the DUT slave
-sim_slave_write_read            : BFM master write + repeated START + read from the DUT slave
-sim_slave_wrong_address         : BFM master addresses an other slave (NACK)
+sim_i2c                         : Simulation of sbi_I2C (tb_I2C) - build only (scenarios of TESTS_LIST)
+sim_i2c_disabled                : Simulation of sbi_I2C (tb_I2C) - BFM master addresses a disabled I2C (NACK, pads released)
+sim_i2c_master_nack             : Simulation of sbi_I2C (tb_I2C) - DUT master writes to an absent slave (NACK)
+sim_i2c_master_prescaler        : Simulation of sbi_I2C (tb_I2C) - DUT master SCL period with prescaler 9
+sim_i2c_master_read             : Simulation of sbi_I2C (tb_I2C) - DUT master reads from the BFM slave
+sim_i2c_master_stretch          : Simulation of sbi_I2C (tb_I2C) - DUT master write with SCL stretched by the bench
+sim_i2c_master_write            : Simulation of sbi_I2C (tb_I2C) - DUT master writes to the BFM slave, SCL period (prescaler 4)
+sim_i2c_master_write_read       : Simulation of sbi_I2C (tb_I2C) - DUT master write + repeated START + read (register read)
+sim_i2c_reset_values            : Simulation of sbi_I2C (tb_I2C) - reset values of the registers
+sim_i2c_slave_disabled          : Simulation of sbi_I2C (tb_I2C) - BFM master addresses a disabled slave (NACK)
+sim_i2c_slave_read              : Simulation of sbi_I2C (tb_I2C) - BFM master reads from the DUT slave
+sim_i2c_slave_stretch           : Simulation of sbi_I2C (tb_I2C) - BFM master reads from the DUT slave, TX FIFO empty (clock stretching)
+sim_i2c_slave_write             : Simulation of sbi_I2C (tb_I2C) - BFM master writes to the DUT slave
+sim_i2c_slave_write_read        : Simulation of sbi_I2C (tb_I2C) - BFM master write + repeated START + read from the DUT slave
+sim_i2c_slave_wrong_address     : Simulation of sbi_I2C (tb_I2C) - BFM master addresses an other slave (NACK)
+sim_multi_1                     : Simulation of one master and 1 slave sbi_I2C (tb_I2C_multi) - every scenario
+sim_multi_3                     : Simulation of one master and 3 slaves sbi_I2C (tb_I2C_multi) - build only (scenarios of TESTS_LIST)
+sim_multi_3_nack                : Simulation of one master and 3 slaves sbi_I2C (tb_I2C_multi) - write to an absent address (NACK)
+sim_multi_3_read                : Simulation of one master and 3 slaves sbi_I2C (tb_I2C_multi) - the master reads from each slave
+sim_multi_3_stretch             : Simulation of one master and 3 slaves sbi_I2C (tb_I2C_multi) - read with an empty TX FIFO (clock stretching by the slave)
+sim_multi_3_write               : Simulation of one master and 3 slaves sbi_I2C (tb_I2C_multi) - the master writes to each slave
+sim_multi_3_write_read          : Simulation of one master and 3 slaves sbi_I2C (tb_I2C_multi) - write to a slave + repeated START + read from an other slave
 

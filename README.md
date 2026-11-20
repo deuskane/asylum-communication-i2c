@@ -111,7 +111,7 @@ The cores of the Asylum IPs are published in the FuseSoC library [asylum-cores](
 ```bash
 pip install fusesoc
 fusesoc library add https://github.com/deuskane/asylum-cores
-fusesoc run --target sim_master_write asylum:communication:I2C      # needs GHDL
+fusesoc run --target sim_i2c_master_write asylum:communication:I2C  # needs GHDL
 ```
 
 To use the IP in your design, add `asylum:communication:I2C` to the `depend` list of your core and instantiate `sbi_I2C` (library `asylum`):
@@ -384,34 +384,58 @@ On a NACK the remaining commands are still executed: check the return value befo
 
 | File | DUT | Description |
 |------|-----|-------------|
-| [sim/basic/tb_I2C.vhd](sim/basic/tb_I2C.vhd) | `sbi_I2C` | Self-checking UVVM testbench, one scenario per simulation selected by the generic `TEST`. The registers are accessed with the UVVM SBI BFM, the I2C bus (open drain, pull-up) is driven by the UVVM I2C BFM as master or slave. A bench process stretches SCL on request and a monitor measures the SCL period and high phase |
-| [sim/multi/tb_I2C_multi.vhd](sim/multi/tb_I2C_multi.vhd) | `NB_SLAVE+1` x `sbi_I2C` | Self-checking UVVM testbench: one `sbi_I2C` master and `NB_SLAVE` `sbi_I2C` slaves on the same bus. Writes to and reads from each slave, write + repeated START + read to two different slaves, slave clock stretching on an empty TX FIFO, absent address (NACK) |
+| [sim/basic/tb_I2C.vhd](sim/basic/tb_I2C.vhd) | `sbi_I2C` | Self-checking UVVM testbench, generic `TESTS_LIST` (scenarios, see below). The registers are accessed with the UVVM SBI BFM, the I2C bus (open drain, pull-up) is driven by the UVVM I2C BFM as master or slave. A bench process stretches SCL on request and a monitor measures the SCL period and high phase; the scenarios drive them through the records `tb_req` / `tb_rsp`. Scenarios in [tb_I2C_reset_pkg](sim/basic/tb_I2C_reset_pkg.vhd), [tb_I2C_master_pkg](sim/basic/tb_I2C_master_pkg.vhd) and [tb_I2C_slave_pkg](sim/basic/tb_I2C_slave_pkg.vhd), names and dispatch in [tb_I2C_tests_pkg](sim/basic/tb_I2C_tests_pkg.vhd), helpers (register accesses, configuration, master transfers, requests to the bench processes, reset pulse) in [tb_I2C_bfm_pkg](sim/basic/tb_I2C_bfm_pkg.vhd) |
+| [sim/multi/tb_I2C_multi.vhd](sim/multi/tb_I2C_multi.vhd) | `NB_SLAVE+1` x `sbi_I2C` | Self-checking UVVM testbench, generics `TESTS_LIST` and `NB_SLAVE` (1 to 3): one `sbi_I2C` master and `NB_SLAVE` `sbi_I2C` slaves (address `0x10 + k`) on the same bus, one SBI BFM for all the instances (the 2 MSB of the address select the instance). Scenarios in [tb_I2C_multi_transfers_pkg](sim/multi/tb_I2C_multi_transfers_pkg.vhd), names and dispatch in [tb_I2C_multi_tests_pkg](sim/multi/tb_I2C_multi_tests_pkg.vhd), helpers in [tb_I2C_multi_bfm_pkg](sim/multi/tb_I2C_multi_bfm_pkg.vhd) |
 
 The slave clock stretching on a full RX FIFO is not checked: the UVVM I2C BFM master samples the acknowledge without waiting for SCL high. All the simulations use FIFO depths 4 / 8 / 8.
 
+### Scenarios (`TESTS_LIST`)
+
+The scenarios are chosen at run time with the generic `TESTS_LIST`: names separated by `,` without space (`master_write,slave_read,master_write`), a name may be repeated. The sequencer first checks every name (an unknown name is a `TB_ERROR` before any scenario runs), then for each scenario drives a reset pulse with the bus inactive, logs `TEST <i>/<N> : <name>` and runs it: each scenario starts from reset and configures the DUT itself. The empty list (default) only compiles and elaborates the testbench. The list is parsed and its names checked with `list_length` / `list_item` / `list_contains` of `asylum.string_pkg` (`asylum:utils:pkg` >= 1.10.0).
+
+`tb_I2C` (checks counted as the `=> OK` lines of the log):
+
+| Name | Checks | Description |
+|------|--------|-------------|
+| `reset_values` | 5 | Reset values of `cfg`, `prescaler`, `status`; SCL and SDA released |
+| `master_write` | 7 | DUT master writes 3 bytes to the BFM slave; SCL period and high phase (ratio 4) |
+| `master_read` | 7 | DUT master reads 3 bytes from the BFM slave |
+| `master_write_read` | 7 | DUT master write + repeated START + read (register read) |
+| `master_nack` | 7 | DUT master writes to an absent slave: `status.nack = 1`, cleared by the next transfer |
+| `master_stretch` | 8 | DUT master write with SCL stretched 3 µs by the bench: the high phase restarts after the stretching |
+| `master_prescaler` | 7 | SCL period and high phase with ratio 9 |
+| `slave_write` | 10 | BFM master writes 4 bytes to the DUT slave |
+| `slave_read` | 6 | BFM master reads 3 bytes from the DUT slave |
+| `slave_stretch` | 8 | BFM master reads from the DUT slave with an empty TX FIFO: SCL held low until the bytes are written |
+| `slave_write_read` | 6 | BFM master write + repeated START + read from the DUT slave |
+| `slave_wrong_address` | 5 | NACK on another address |
+| `slave_disabled` | 5 | NACK when `cfg.slave_addr = 0` |
+| `disabled` | 7 | NACK and pads released when `cfg.enable = 0` |
+
+`tb_I2C_multi` (each scenario first configures every instance; checks with `NB_SLAVE = 3`):
+
+| Name | Checks | Description |
+|------|--------|-------------|
+| `write` | 22 | The master writes to each slave: only the addressed slave receives the bytes |
+| `read` | 19 | The master reads from each slave |
+| `write_read` | 12 | Write to I2C1 + repeated START + read from I2C`NB_SLAVE`: each slave is addressed only until the next START or STOP |
+| `stretch` | 12 | Read from I2C`NB_SLAVE` with an empty TX FIFO: SCL held low by the slave (released by the master) until the software writes the bytes |
+| `nack` | 9 | Write to an absent address: `status.nack = 1`, no slave addressed |
+
 ### Targets
 
-One target per scenario, each one starts from reset and runs alone (in parallel in the CI):
+| Target | Toplevel | Description |
+|--------|----------|-------------|
+| `default` | `sbi_I2C` | HDL fileset + CSR generation (not a simulation) |
+| `sim_i2c` | `tb_I2C` | Build and elaboration only (`TESTS_LIST` empty), base of the scenario targets and of the list runs |
+| `sim_i2c_<name>` | `tb_I2C` | One target per scenario of `tb_I2C` (`TESTS_LIST=<name>`): `sim_i2c_reset_values`, `_master_write`, `_master_read`, `_master_write_read`, `_master_nack`, `_master_stretch`, `_master_prescaler`, `_slave_write`, `_slave_read`, `_slave_stretch`, `_slave_write_read`, `_slave_wrong_address`, `_slave_disabled`, `_disabled` (95 checks in all) |
+| `sim_multi_3` | `tb_I2C_multi` | Reference configuration, one master and 3 slaves: build and elaboration only (`TESTS_LIST` empty) |
+| `sim_multi_3_<name>` | `tb_I2C_multi` | One target per scenario of `tb_I2C_multi` with 3 slaves: `sim_multi_3_write`, `_read`, `_write_read`, `_stretch`, `_nack` (74 checks in all) |
+| `sim_multi_1` | `tb_I2C_multi` | One master and 1 slave, every scenario (37 checks) |
+| `lint_ghdl` | `asylum.sbi_I2C_wrapper` | GHDL `-Wall` analysis and elaboration of [syn/sbi_I2C_wrapper.vhd](syn/sbi_I2C_wrapper.vhd) |
+| `lint_ghdl_synth_<config>` | `asylum.sbi_I2C_wrapper` | `ghdl --synth` check for 5 generic configurations: `default`, `sim`, `master_only`, `slave_only`, `fixed_prescaler` |
 
-| Target | Scenario |
-|--------|----------|
-| `sim_reset_values` | Reset values of `cfg`, `prescaler`, `status`; pads released |
-| `sim_master_write` | DUT master writes 3 bytes to the BFM slave; SCL period and high phase (ratio 4) |
-| `sim_master_read` | DUT master reads 3 bytes from the BFM slave |
-| `sim_master_write_read` | DUT master write + repeated START + read (register read) |
-| `sim_master_nack` | DUT master writes to an absent slave: `status.nack = 1`, cleared by the next transfer |
-| `sim_master_stretch` | DUT master write with SCL stretched 3 µs by the bench |
-| `sim_master_prescaler` | SCL period and high phase with ratio 9 |
-| `sim_slave_write` | BFM master writes 4 bytes to the DUT slave |
-| `sim_slave_read` | BFM master reads 3 bytes from the DUT slave |
-| `sim_slave_stretch` | BFM master reads from the DUT slave with an empty TX FIFO: SCL held low until the bytes are written |
-| `sim_slave_write_read` | BFM master write + repeated START + read from the DUT slave |
-| `sim_slave_wrong_address` | NACK on another address |
-| `sim_slave_disabled` | NACK when `cfg.slave_addr = 0` |
-| `sim_disabled` | NACK and pads released when `cfg.enable = 0` |
-| `sim_multi_slave` | One master and 3 slaves `sbi_I2C` on the same bus |
-| `lint_ghdl` | GHDL `-Wall` analysis and elaboration of [syn/sbi_I2C_wrapper.vhd](syn/sbi_I2C_wrapper.vhd) |
-| `lint_ghdl_synth_<config>` | `ghdl --synth` check for 5 generic configurations: `default`, `sim`, `master_only`, `slave_only`, `fixed_prescaler` |
+The reference configuration of a testbench (the only one for `tb_I2C`, 3 slaves for `tb_I2C_multi`: the most complete) has a build-only base target and one target per scenario: one CI job per scenario, a failure is isolated. Every other configuration has one target that runs the whole list: the `TEST <i>/<N>` header names a failing scenario. FuseSoC replaces the `parameters` list of an inherited target, so each target repeats the generics of its configuration.
 
 Every `sim_*` and `lint_*` target is a job of the [GitHub CI](https://github.com/deuskane/asylum-communication-i2c/actions/workflows/ci.yml), run in the [asylum-env](https://github.com/deuskane/asylum-ci) image (GHDL, FuseSoC, UVVM). The `sim` and `lint` badges count the passed and failed targets of the last run on `main`.
 
@@ -421,13 +445,30 @@ From a clone of [asylum-project](https://github.com/deuskane/asylum-project) (GH
 
 ```bash
 make help                        # variables, rules and targets
-make sim_master_write            # one target, log in log/
+make sim_i2c_master_write        # one scenario, log in log/
+make sim_multi_1                 # every scenario of a configuration
 make nonreg_sim                  # every sim_* target
 make nonreg_lint                 # every lint_* target
-make TARGETS_FILTER=^sim_slave nonreg_sim
+make TARGETS_FILTER=^sim_i2c_slave nonreg_sim
 ```
 
-To add a scenario: a `test_<name>` procedure in the sequencer of `tb_I2C`, its case in the dispatch on `TEST`, a `sim_<name>` target with `TEST=<name>` in [I2C.core](I2C.core), then `make ci_generate`.
+To run a list of scenarios, build the testbench once, then run the list without recompiling, either with FuseSoC (same `--build-root` and `--no-export` as the Makefile, so that the build of the target is reused; any generic of the target can be overridden after the VLNV):
+
+```bash
+make sim_i2c                     # build and elaboration (TESTS_LIST empty)
+fusesoc --cores-root . run --build-root build --no-export --run --target sim_i2c asylum:communication:I2C:1.0.0 --TESTS_LIST=slave_write,master_nack,slave_write
+make sim_multi_3
+fusesoc --cores-root . run --build-root build --no-export --run --target sim_multi_3 asylum:communication:I2C:1.0.0 --TESTS_LIST=stretch,nack
+```
+
+or in the build directory of the target. `EXTRA_OPTIONS` replaces every generic set by the target: repeat the generics of the configuration, else their default values apply:
+
+```bash
+cd build/asylum_communication_I2C_1.0.0/sim_multi_3-ghdl
+make run EXTRA_OPTIONS="-gTESTS_LIST=stretch,nack -gNB_SLAVE=3"
+```
+
+To add a scenario: a `test_<name>` procedure in a scenario package (in the `sim_basic` or `sim_multi` fileset), its name in `C_TESTS` and its case in `run_test` of the `tests_pkg`, a `sim_i2c_<name>` (or `sim_multi_3_<name>`) target and the name in the `TESTS_LIST` of the other configurations in [I2C.core](I2C.core), then `make mk/targets.txt` and `make ci_generate`.
 
 Outside the CI, GHDL writes a waveform `dut.fst`, and `sbi_I2C` writes the dumps `dump_i2c_cmd.txt`, `dump_i2c_tx.txt`, `dump_i2c_rx.txt`.
 
@@ -436,7 +477,7 @@ Outside the CI, GHDL writes a waveform `dut.fst`, and `sbi_I2C` writes the dumps
 | Core | Repository | Purpose |
 |------|------------|---------|
 | `asylum:utils:generators` | [asylum-utils-generators](https://github.com/deuskane/asylum-utils-generators) | regtool (register generator) and the CSR building blocks (`csr_reg`, `csr_ext`, `csr_fifo`) |
-| `asylum:utils:pkg` | [asylum-utils-pkg](https://github.com/deuskane/asylum-utils-pkg) | Common packages (`sbi_pkg`, ...) |
+| `asylum:utils:pkg` | [asylum-utils-pkg](https://github.com/deuskane/asylum-utils-pkg) | Common packages (`sbi_pkg`, ...); the testbenches need >= 1.10.0 (`string_pkg` lists of `TESTS_LIST`) |
 | `asylum:target:techmap` | [asylum-target-techmap](https://github.com/deuskane/asylum-target-techmap) | `sync2dffrn` synchronizers of SCL and SDA |
 | `bitvis:verification:uvvm` | [UVVM](https://github.com/UVVM/UVVM) | Verification library, SBI and I2C BFMs |
 
