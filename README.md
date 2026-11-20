@@ -409,7 +409,7 @@ The scenarios are chosen at run time with the generic `TESTS_LIST`: names separa
 | `slave_stretch` | 8 | BFM master reads from the DUT slave with an empty TX FIFO: SCL held low until the bytes are written |
 | `slave_write_read` | 6 | BFM master write + repeated START + read from the DUT slave |
 | `slave_wrong_address` | 5 | NACK on another address |
-| `slave_disabled` | 5 | NACK when `cfg.slave_addr = 0` |
+| `slave_disabled` | 8 | NACK when `cfg.slave_addr = 0`, also on address 0 (equal to `cfg.slave_addr`) |
 | `disabled` | 7 | NACK and pads released when `cfg.enable = 0` |
 
 `tb_I2C_multi` (each scenario first configures every instance; checks with `NB_SLAVE = 3`):
@@ -428,7 +428,7 @@ The scenarios are chosen at run time with the generic `TESTS_LIST`: names separa
 |--------|----------|-------------|
 | `default` | `sbi_I2C` | HDL fileset + CSR generation (not a simulation) |
 | `sim_i2c` | `tb_I2C` | Build and elaboration only (`TESTS_LIST` empty), base of the scenario targets and of the list runs |
-| `sim_i2c_<name>` | `tb_I2C` | One target per scenario of `tb_I2C` (`TESTS_LIST=<name>`): `sim_i2c_reset_values`, `_master_write`, `_master_read`, `_master_write_read`, `_master_nack`, `_master_stretch`, `_master_prescaler`, `_slave_write`, `_slave_read`, `_slave_stretch`, `_slave_write_read`, `_slave_wrong_address`, `_slave_disabled`, `_disabled` (95 checks in all) |
+| `sim_i2c_<name>` | `tb_I2C` | One target per scenario of `tb_I2C` (`TESTS_LIST=<name>`): `sim_i2c_reset_values`, `_master_write`, `_master_read`, `_master_write_read`, `_master_nack`, `_master_stretch`, `_master_prescaler`, `_slave_write`, `_slave_read`, `_slave_stretch`, `_slave_write_read`, `_slave_wrong_address`, `_slave_disabled`, `_disabled` (98 checks in all) |
 | `sim_multi_3` | `tb_I2C_multi` | Reference configuration, one master and 3 slaves: build and elaboration only (`TESTS_LIST` empty) |
 | `sim_multi_3_<name>` | `tb_I2C_multi` | One target per scenario of `tb_I2C_multi` with 3 slaves: `sim_multi_3_write`, `_read`, `_write_read`, `_stretch`, `_nack` (74 checks in all) |
 | `sim_multi_1` | `tb_I2C_multi` | One master and 1 slave, every scenario (37 checks) |

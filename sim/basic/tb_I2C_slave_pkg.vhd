@@ -13,13 +13,15 @@
 --                                      clock stretching by the DUT
 --              * slave_write_read    : write + repeated START + read
 --              * slave_wrong_address : NACK on an other address
---              * slave_disabled      : NACK if slave address is 0
+--              * slave_disabled      : NACK if slave address is 0, also on
+--                                      address 0
 -------------------------------------------------------------------------------
 -- Copyright (c) 2026
 -------------------------------------------------------------------------------
 -- Revisions  :
 -- Date        Version  Author   Description
 -- 2026-11-20  1.0      mrosiere Created (split of tb_I2C)
+-- 2026-11-20  1.1      mrosiere slave_disabled : address 0 also NACKed
 -------------------------------------------------------------------------------
 
 library ieee;
@@ -82,7 +84,8 @@ package tb_I2C_slave_pkg is
     ;signal   tb_rsp     : in    tb_rsp_t
     );
 
-  -- BFM master addresses a disabled slave (cfg.slave_addr = 0) : NACK
+  -- BFM master addresses a disabled slave (cfg.slave_addr = 0) : NACK, also
+  -- on address 0
   procedure test_slave_disabled
     (signal   clk        : in    std_logic
     ;signal   sbi_if     : inout t_sbi_if
@@ -187,6 +190,13 @@ package body tb_I2C_slave_pkg is
     bfm_start(BFM_MASTER_QUICK_NACK, C_ADDR_DUT, C_BIT_TIME_MASTER, C_NONE, C_NONE, tb_req);
     bfm_wait("Slave disabled", tb_req, tb_rsp);
     check_reg(I2C_STATUS, x"20", "Slave disabled : not addressed, RX FIFO empty", clk, sbi_if);
+
+    -- Address 0 equals cfg.slave_addr : NACK all the same (slave disabled).
+    -- The I2C BFM warns that 0 is the general call address.
+    increment_expected_alerts(WARNING, 1, "I2C BFM : general call address", C_TB_SCOPE);
+    bfm_start(BFM_MASTER_QUICK_NACK, 0, C_BIT_TIME_MASTER, C_NONE, C_NONE, tb_req);
+    bfm_wait("Slave disabled, address 0", tb_req, tb_rsp);
+    check_reg(I2C_STATUS, x"20", "Slave disabled, address 0 : not addressed, RX FIFO empty", clk, sbi_if);
   end procedure;
 
 end package body tb_I2C_slave_pkg;
