@@ -75,10 +75,15 @@ filesets:
   sim_multi:
   #---------------------------------------
     files        :
+      - sim/multi/tb_I2C_multi_bfm_pkg.vhd
+      - sim/multi/tb_I2C_multi_transfers_pkg.vhd
+      - sim/multi/tb_I2C_multi_tests_pkg.vhd
       - sim/multi/tb_I2C_multi.vhd
     file_type    : vhdlSource-2008
     depend       :
       - bitvis:verification:uvvm
+      # string_pkg list_length / list_item / list_contains (TESTS_LIST)
+      - ">=asylum:utils:pkg:1.10.0"
 
   #---------------------------------------
   # Lint Files (pre_run hook of lint_ghdl_synth_*)
@@ -311,6 +316,7 @@ targets:
       - sim_multi
     toplevel        : tb_I2C_multi
     parameters      :
+      - TESTS_LIST=write,read,write_read,stretch,nack
       - NB_SLAVE=3
 
 #=========================================
@@ -331,7 +337,7 @@ parameters :
   # Generics of the testbenches (sim_*)
   #---------------------------------------
   TESTS_LIST :
-    description : Scenarios of tb_I2C run in sequence, separated by ',' (names in sim/basic/tb_I2C_tests_pkg.vhd), empty = build only
+    description : Scenarios run in sequence, separated by ',' (names in sim/basic/tb_I2C_tests_pkg.vhd, sim/multi/tb_I2C_multi_tests_pkg.vhd), empty = build only
     datatype    : str
     default     : ""
     paramtype   : generic
