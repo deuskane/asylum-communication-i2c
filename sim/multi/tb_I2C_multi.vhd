@@ -12,18 +12,18 @@
 --                       k = 1 to NB_SLAVE, address 0x10 + k
 --              The CSR of all the instances are accessed with one SBI BFM :
 --              the 2 MSB of the SBI address select the instance.
---              1. the master writes to each slave (only the addressed slave
---                 receives the bytes)
---              2. the master reads from each slave
---              3. write to a slave + repeated START + read from an other
---                 slave
---              4. read from a slave with an empty TX FIFO : clock stretching
---                 by the slave until the software writes the bytes
---              5. write to an absent address : NACK, no slave addressed
+--              TESTS_LIST : scenarios run in sequence, separated by ','
+--                           (tb_I2C_multi_tests_pkg), each one after a
+--                           reset pulse ; "" : build and elaboration only
+--              NB_SLAVE   : number of slave instances (1 to 3)
 -------------------------------------------------------------------------------
 -- Revisions  :
 -- Date        Version  Author   Description
 -- 2026-10-22  1.0      mrosiere Created
+-- 2026-11-20  1.1      mrosiere TESTS_LIST, scenarios in
+--                               tb_I2C_multi_transfers_pkg, helpers in
+--                               tb_I2C_multi_bfm_pkg, reset pulse before each
+--                               scenario
 -------------------------------------------------------------------------------
 
 library ieee;
@@ -38,25 +38,26 @@ use     bitvis_vip_sbi.sbi_bfm_pkg.all;
 
 library asylum;
 use     asylum.sbi_pkg.all;
+use     asylum.string_pkg.all;
 use     asylum.i2c_pkg.all;
 use     asylum.I2C_csr_pkg.all;
 
+library work;
+use     work.tb_I2C_multi_bfm_pkg.all;
+use     work.tb_I2C_multi_tests_pkg.all;
+
 entity tb_I2C_multi is
   generic (
-    NB_SLAVE : positive := 3                          -- Number of slave instances (1 to 3)
+    TESTS_LIST : string   := ""                       -- Scenarios, e.g. "write,stretch"
+   ;NB_SLAVE   : positive := 3                        -- Number of slave instances (1 to 3)
     );
 end tb_I2C_multi;
 
 architecture sim of tb_I2C_multi is
 
   constant C_SCOPE            : string   := "TB_I2C_MULTI";
-  constant C_CLK_PERIOD       : time     := 20 ns;
-  constant C_RATIO            : natural  := 4;        -- Prescaler of all the instances
   constant C_NB_INST          : positive := NB_SLAVE+1;
-  constant C_SEL_WIDTH        : natural  := 2;        -- SBI address bits selecting the instance
   constant C_ADDR_WIDTH       : natural  := C_SEL_WIDTH+I2C_ADDR_WIDTH;
-  constant C_ADDR_SLAVE_BASE  : natural  := 16#10#;   -- Address of the slave I2Ck : 0x10 + k
-  constant C_ADDR_NONE        : natural  := 16#20#;   -- Address without slave
 
   type     slv8_array_t is array (natural range <>) of std_logic_vector(8-1 downto 0);
 
@@ -79,18 +80,6 @@ architecture sim of tb_I2C_multi is
   signal   i2c_sda_in         : std_logic;
   signal   scl_oe             : std_logic_vector(0 to C_NB_INST-1);
   signal   sda_oe             : std_logic_vector(0 to C_NB_INST-1);
-
-  -- Data patterns
-  function pattern(seed : natural; i : natural) return std_logic_vector is
-  begin
-    return std_logic_vector(to_unsigned((seed*37 + i*53 + 16#5A#) mod 256, 8));
-  end function;
-
-  -- 7-bit address of the slave I2Ck
-  function slave_addr(k : natural) return natural is
-  begin
-    return C_ADDR_SLAVE_BASE + k;
-  end function;
 
 begin
 
@@ -173,177 +162,30 @@ begin
   -----------------------------------------------------------------------------
   -- Sequencer
   -----------------------------------------------------------------------------
-  p_main : process
-    variable v_sbi_config : t_sbi_bfm_config := C_SBI_BFM_CONFIG_DEFAULT;
-    variable v_poll_panel : t_msg_id_panel   := C_MSG_ID_PANEL_DEFAULT;
-    variable v_status     : std_logic_vector(7 downto 0);
-
-    -- SBI address of the register addr of the instance inst
-    function inst_addr(inst : natural; addr : unsigned) return unsigned is
-    begin
-      return to_unsigned(inst, C_SEL_WIDTH) & addr;
-    end function;
-
-    procedure write_reg(inst : natural; addr : unsigned; data : std_logic_vector; msg : string) is
-    begin
-      sbi_write(inst_addr(inst, addr), data, "I2C" & to_string(inst) & " : " & msg, clk_i, sbi_if, C_SCOPE, shared_msg_id_panel, v_sbi_config);
-    end procedure;
-
-    procedure check_reg(inst : natural; addr : unsigned; data : std_logic_vector; msg : string) is
-    begin
-      sbi_check(inst_addr(inst, addr), data, "I2C" & to_string(inst) & " : " & msg, clk_i, sbi_if, ERROR, C_SCOPE, shared_msg_id_panel, v_sbi_config);
-    end procedure;
-
-    -- Poll the status register of the instance until (status and mask) = value
-    procedure wait_status(inst : natural; mask : std_logic_vector(7 downto 0); value : std_logic_vector(7 downto 0); msg : string) is
-    begin
-      for i in 1 to 100000 loop
-        sbi_read(inst_addr(inst, I2C_STATUS), v_status, msg & " : poll status", clk_i, sbi_if, C_SCOPE, v_poll_panel, v_sbi_config);
-        exit when (v_status and mask) = value;
-      end loop;
-      check_value(v_status and mask, value, ERROR, "I2C" & to_string(inst) & " : " & msg & " : status and 0x" & to_hstring(mask), C_SCOPE);
-    end procedure;
-
-    -- Prescaler and cfg (enable, slave address) of the instance
-    procedure configure(inst : natural; addr : natural) is
-      variable v_cfg : std_logic_vector(7 downto 0);
-    begin
-      v_cfg := std_logic_vector(to_unsigned(addr, 7)) & '1';
-      write_reg(inst, I2C_PRESCALER, std_logic_vector(to_unsigned(C_RATIO, 8)), "prescaler " & to_string(C_RATIO));
-      write_reg(inst, I2C_CFG      , v_cfg, "cfg 0x" & to_hstring(v_cfg));
-      check_reg(inst, I2C_CFG      , v_cfg, "read back cfg");
-    end procedure;
-
-    -- Master command (I2C0) : op & stop & start
-    procedure command(start : boolean; stop : boolean; op : std_logic_vector(1 downto 0); msg : string) is
-      variable v_start : std_logic_vector(0 downto 0) := I2C_CMD_START_DISABLE;
-      variable v_stop  : std_logic_vector(0 downto 0) := I2C_CMD_STOP_DISABLE;
-    begin
-      if start then v_start := I2C_CMD_START_ENABLE; end if;
-      if stop  then v_stop  := I2C_CMD_STOP_ENABLE;  end if;
-      write_reg(0, I2C_CMD, "0000" & op & v_stop & v_start, msg);
-    end procedure;
-
-    -- Master (I2C0) : START, address + W, bytes, STOP (if stop)
-    procedure master_write(addr : natural; data : t_byte_array; stop : boolean; msg : string) is
-    begin
-      write_reg(0, I2C_DATA, std_logic_vector(to_unsigned(addr, 7)) & '0', msg & " : TX address + W");
-      command(true, false, I2C_CMD_OP_WRITE, msg & " : command START + WRITE");
-      for i in data'range loop
-        write_reg(0, I2C_DATA, data(i), msg & " : TX byte " & to_string(i));
-        command(false, stop and i = data'high, I2C_CMD_OP_WRITE, msg & " : command WRITE");
-      end loop;
-    end procedure;
-
-    -- Master (I2C0) : (repeated) START, address + R, nb bytes (ACK except the last one), STOP
-    procedure master_read(addr : natural; nb : natural; msg : string) is
-    begin
-      write_reg(0, I2C_DATA, std_logic_vector(to_unsigned(addr, 7)) & '1', msg & " : TX address + R");
-      command(true, false, I2C_CMD_OP_WRITE, msg & " : command START + WRITE");
-      for i in 0 to nb-2 loop
-        command(false, false, I2C_CMD_OP_READ_ACK, msg & " : command READ_ACK");
-      end loop;
-      command(false, true, I2C_CMD_OP_READ_NACK, msg & " : command READ_NACK + STOP");
-    end procedure;
-
-    -- Check the bytes of the RX FIFO of the instance
-    procedure check_rx(inst : natural; data : t_byte_array; msg : string) is
-    begin
-      for i in data'range loop
-        check_reg(inst, I2C_DATA, data(i), msg & " : RX byte " & to_string(i));
-      end loop;
-    end procedure;
-
+  p_sequencer : process
   begin
-    v_sbi_config.max_wait_cycles := 100000;
-    v_poll_panel(ID_BFM)         := DISABLED;
+    log(ID_LOG_HDR, "NB_SLAVE = " & integer'image(NB_SLAVE) & ", TESTS_LIST : " & TESTS_LIST, C_SCOPE);
 
-    sbi_if   <= init_sbi_if_signals(C_ADDR_WIDTH, I2C_DATA_WIDTH);
-    arst_b_i <= '0';
-    wait for 100 ns;
-    arst_b_i <= '1';
-    wait until rising_edge(clk_i);
-
-    ------------------------------------------------
-    log(ID_LOG_HDR, "Configuration : I2C0 master, I2C1 to I2C" & to_string(NB_SLAVE) & " slaves", C_SCOPE);
-    ------------------------------------------------
-    configure(0, 0);
-    for k in 1 to NB_SLAVE loop
-      configure(k, slave_addr(k));
+    -- Every name is checked before the first scenario
+    for i in 1 to list_length(TESTS_LIST) loop
+      if not list_contains(C_TESTS, list_item(TESTS_LIST, i))
+      then
+        alert(TB_ERROR, "Unknown test """ & list_item(TESTS_LIST, i) & """ (tests : " & C_TESTS & ")", C_SCOPE);
+      end if;
     end loop;
 
-    ------------------------------------------------
-    log(ID_LOG_HDR, "1. The master writes to each slave", C_SCOPE);
-    ------------------------------------------------
-    for k in 1 to NB_SLAVE loop
-      master_write(slave_addr(k), t_byte_array'(pattern(k, 0), pattern(k, 1)), true, "Write to I2C" & to_string(k));
-      wait_status(0, x"07", x"00", "Write to I2C" & to_string(k) & " : not busy, ACK, bus free");
-      check_rx(k, t_byte_array'(pattern(k, 0), pattern(k, 1)), "Write to I2C" & to_string(k));
-      for j in 1 to NB_SLAVE loop
-        wait_status(j, x"2C", x"20", "Write to I2C" & to_string(k) & " : bus free, not addressed, RX FIFO empty");
-      end loop;
+    for i in 1 to list_length(TESTS_LIST) loop
+      -- Reset pulse, bus inactive : each scenario starts from reset
+      sbi_if <= init_sbi_if_signals(C_ADDR_WIDTH, I2C_DATA_WIDTH);
+      do_reset(clk_i, arst_b_i);
+
+      log(ID_LOG_HDR, "TEST " & integer'image(i) & "/" & integer'image(list_length(TESTS_LIST)) & " : " & list_item(TESTS_LIST, i), C_SCOPE);
+      run_test(list_item(TESTS_LIST, i), NB_SLAVE, clk_i, sbi_if, i2c_scl, scl_oe);
     end loop;
 
-    ------------------------------------------------
-    log(ID_LOG_HDR, "2. The master reads from each slave", C_SCOPE);
-    ------------------------------------------------
-    for k in 1 to NB_SLAVE loop
-      for i in 0 to 2 loop
-        write_reg(k, I2C_DATA, pattern(k+10, i), "Read from I2C" & to_string(k) & " : TX byte " & to_string(i));
-      end loop;
-      master_read(slave_addr(k), 3, "Read from I2C" & to_string(k));
-      check_rx(0, t_byte_array'(pattern(k+10, 0), pattern(k+10, 1), pattern(k+10, 2)), "Read from I2C" & to_string(k));
-      wait_status(0, x"07", x"00", "Read from I2C" & to_string(k) & " : not busy, ACK, bus free");
-      wait_status(k, x"3C", x"30", "Read from I2C" & to_string(k) & " : bus free, not addressed, last direction read, RX FIFO empty");
-    end loop;
-
-    ------------------------------------------------
-    log(ID_LOG_HDR, "3. Write to I2C1 + repeated START + read from I2C" & to_string(NB_SLAVE), C_SCOPE);
-    ------------------------------------------------
-    write_reg(NB_SLAVE, I2C_DATA, x"C3", "Register read : TX byte");
-    master_write(slave_addr(1), t_byte_array'(0 => x"5A"), false, "Register read : write I2C1");
-    wait_status(0, x"07", x"04", "Register read : write done, ACK, bus kept by the master");
-    wait_status(1, x"18", x"08", "Register read : addressed, master writes");
-    if NB_SLAVE > 1
-    then
-      wait_status(NB_SLAVE, x"08", x"00", "Register read : not addressed");
-    end if;
-    master_read(slave_addr(NB_SLAVE), 1, "Register read : repeated START, read I2C" & to_string(NB_SLAVE));
-    check_rx(0, t_byte_array'(0 => x"C3"), "Register read");
-    wait_status(0, x"07", x"00", "Register read : not busy, ACK, bus free");
-    check_rx(1, t_byte_array'(0 => x"5A"), "Register read");
-    wait_status(1, x"08", x"00", "Register read : not addressed after the repeated START");
-    wait_status(NB_SLAVE, x"18", x"10", "Register read : not addressed after the STOP, last direction read");
-
-    ------------------------------------------------
-    log(ID_LOG_HDR, "4. Read from I2C" & to_string(NB_SLAVE) & " with an empty TX FIFO : clock stretching", C_SCOPE);
-    ------------------------------------------------
-    master_read(slave_addr(NB_SLAVE), 2, "Slave stretching");
-    wait_status(NB_SLAVE, x"18", x"18", "Slave stretching : addressed, master reads");
-    wait for 20 us;
-    check_value(i2c_scl         , '0', MATCH_STD, ERROR, "Slave stretching : SCL held low", C_SCOPE);
-    check_value(scl_oe(NB_SLAVE), '1', ERROR, "Slave stretching : I2C" & to_string(NB_SLAVE) & " pulls SCL low", C_SCOPE);
-    check_value(scl_oe(0)       , '0', ERROR, "Slave stretching : the master releases SCL", C_SCOPE);
-    wait_status(0, x"01", x"01", "Slave stretching : master busy");
-    write_reg(NB_SLAVE, I2C_DATA, x"9A", "Slave stretching : TX byte 0");
-    write_reg(NB_SLAVE, I2C_DATA, x"BC", "Slave stretching : TX byte 1");
-    check_rx(0, t_byte_array'(x"9A", x"BC"), "Slave stretching");
-    wait_status(0, x"07", x"00", "Slave stretching : not busy, ACK, bus free");
-
-    ------------------------------------------------
-    log(ID_LOG_HDR, "5. Write to an absent address : NACK", C_SCOPE);
-    ------------------------------------------------
-    master_write(C_ADDR_NONE, t_byte_array'(0 => x"55"), true, "Absent address");
-    wait_status(0, x"05", x"00", "Absent address : not busy, bus free");
-    check_reg(0, I2C_STATUS, x"22", "Absent address : nack = 1, RX FIFO empty");
-    for k in 1 to NB_SLAVE loop
-      wait_status(k, x"2C", x"20", "Absent address : not addressed, RX FIFO empty");
-    end loop;
-
-    log(ID_LOG_HDR, "Simulation Finished", C_SCOPE);
     report_alert_counters(FINAL);
     std.env.stop;
     wait;
-  end process p_main;
+  end process p_sequencer;
 
 end sim;

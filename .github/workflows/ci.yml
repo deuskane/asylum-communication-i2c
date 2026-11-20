@@ -7,80 +7,115 @@ on:
     branches: [ main, develop ]
 jobs:
 #<GENERATE_BEGIN>
-  sim_disabled:
+  sim_i2c:
     uses: deuskane/asylum-ci/.github/workflows/vhdl-ci.yml@main
     with:
-      name: sim_disabled
+      name: sim_i2c
 
-  sim_master_nack:
+  sim_i2c_disabled:
     uses: deuskane/asylum-ci/.github/workflows/vhdl-ci.yml@main
     with:
-      name: sim_master_nack
+      name: sim_i2c_disabled
 
-  sim_master_prescaler:
+  sim_i2c_master_nack:
     uses: deuskane/asylum-ci/.github/workflows/vhdl-ci.yml@main
     with:
-      name: sim_master_prescaler
+      name: sim_i2c_master_nack
 
-  sim_master_read:
+  sim_i2c_master_prescaler:
     uses: deuskane/asylum-ci/.github/workflows/vhdl-ci.yml@main
     with:
-      name: sim_master_read
+      name: sim_i2c_master_prescaler
 
-  sim_master_stretch:
+  sim_i2c_master_read:
     uses: deuskane/asylum-ci/.github/workflows/vhdl-ci.yml@main
     with:
-      name: sim_master_stretch
+      name: sim_i2c_master_read
 
-  sim_master_write:
+  sim_i2c_master_stretch:
     uses: deuskane/asylum-ci/.github/workflows/vhdl-ci.yml@main
     with:
-      name: sim_master_write
+      name: sim_i2c_master_stretch
 
-  sim_master_write_read:
+  sim_i2c_master_write:
     uses: deuskane/asylum-ci/.github/workflows/vhdl-ci.yml@main
     with:
-      name: sim_master_write_read
+      name: sim_i2c_master_write
 
-  sim_multi_slave:
+  sim_i2c_master_write_read:
     uses: deuskane/asylum-ci/.github/workflows/vhdl-ci.yml@main
     with:
-      name: sim_multi_slave
+      name: sim_i2c_master_write_read
 
-  sim_reset_values:
+  sim_i2c_reset_values:
     uses: deuskane/asylum-ci/.github/workflows/vhdl-ci.yml@main
     with:
-      name: sim_reset_values
+      name: sim_i2c_reset_values
 
-  sim_slave_disabled:
+  sim_i2c_slave_disabled:
     uses: deuskane/asylum-ci/.github/workflows/vhdl-ci.yml@main
     with:
-      name: sim_slave_disabled
+      name: sim_i2c_slave_disabled
 
-  sim_slave_read:
+  sim_i2c_slave_read:
     uses: deuskane/asylum-ci/.github/workflows/vhdl-ci.yml@main
     with:
-      name: sim_slave_read
+      name: sim_i2c_slave_read
 
-  sim_slave_stretch:
+  sim_i2c_slave_stretch:
     uses: deuskane/asylum-ci/.github/workflows/vhdl-ci.yml@main
     with:
-      name: sim_slave_stretch
+      name: sim_i2c_slave_stretch
 
-  sim_slave_write:
+  sim_i2c_slave_write:
     uses: deuskane/asylum-ci/.github/workflows/vhdl-ci.yml@main
     with:
-      name: sim_slave_write
+      name: sim_i2c_slave_write
 
-  sim_slave_write_read:
+  sim_i2c_slave_write_read:
     uses: deuskane/asylum-ci/.github/workflows/vhdl-ci.yml@main
     with:
-      name: sim_slave_write_read
+      name: sim_i2c_slave_write_read
 
-  sim_slave_wrong_address:
+  sim_i2c_slave_wrong_address:
     uses: deuskane/asylum-ci/.github/workflows/vhdl-ci.yml@main
     with:
-      name: sim_slave_wrong_address
+      name: sim_i2c_slave_wrong_address
+
+  sim_multi_1:
+    uses: deuskane/asylum-ci/.github/workflows/vhdl-ci.yml@main
+    with:
+      name: sim_multi_1
+
+  sim_multi_3:
+    uses: deuskane/asylum-ci/.github/workflows/vhdl-ci.yml@main
+    with:
+      name: sim_multi_3
+
+  sim_multi_3_nack:
+    uses: deuskane/asylum-ci/.github/workflows/vhdl-ci.yml@main
+    with:
+      name: sim_multi_3_nack
+
+  sim_multi_3_read:
+    uses: deuskane/asylum-ci/.github/workflows/vhdl-ci.yml@main
+    with:
+      name: sim_multi_3_read
+
+  sim_multi_3_stretch:
+    uses: deuskane/asylum-ci/.github/workflows/vhdl-ci.yml@main
+    with:
+      name: sim_multi_3_stretch
+
+  sim_multi_3_write:
+    uses: deuskane/asylum-ci/.github/workflows/vhdl-ci.yml@main
+    with:
+      name: sim_multi_3_write
+
+  sim_multi_3_write_read:
+    uses: deuskane/asylum-ci/.github/workflows/vhdl-ci.yml@main
+    with:
+      name: sim_multi_3_write_read
 
   lint_ghdl:
     uses: deuskane/asylum-ci/.github/workflows/vhdl-ci.yml@main
@@ -113,7 +148,7 @@ jobs:
       name: lint_ghdl_synth_slave_only
 
   badges:
-    needs: [sim_disabled, sim_master_nack, sim_master_prescaler, sim_master_read, sim_master_stretch, sim_master_write, sim_master_write_read, sim_multi_slave, sim_reset_values, sim_slave_disabled, sim_slave_read, sim_slave_stretch, sim_slave_write, sim_slave_write_read, sim_slave_wrong_address, lint_ghdl, lint_ghdl_synth_default, lint_ghdl_synth_fixed_prescaler, lint_ghdl_synth_master_only, lint_ghdl_synth_sim, lint_ghdl_synth_slave_only]
+    needs: [sim_i2c, sim_i2c_disabled, sim_i2c_master_nack, sim_i2c_master_prescaler, sim_i2c_master_read, sim_i2c_master_stretch, sim_i2c_master_write, sim_i2c_master_write_read, sim_i2c_reset_values, sim_i2c_slave_disabled, sim_i2c_slave_read, sim_i2c_slave_stretch, sim_i2c_slave_write, sim_i2c_slave_write_read, sim_i2c_slave_wrong_address, sim_multi_1, sim_multi_3, sim_multi_3_nack, sim_multi_3_read, sim_multi_3_stretch, sim_multi_3_write, sim_multi_3_write_read, lint_ghdl, lint_ghdl_synth_default, lint_ghdl_synth_fixed_prescaler, lint_ghdl_synth_master_only, lint_ghdl_synth_sim, lint_ghdl_synth_slave_only]
     if: always() && github.event_name == 'push' && github.ref == 'refs/heads/main'
     permissions:
       contents: write
