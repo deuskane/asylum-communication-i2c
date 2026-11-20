@@ -59,10 +59,17 @@ filesets:
   sim_basic:
   #---------------------------------------
     files        :
+      - sim/basic/tb_I2C_bfm_pkg.vhd
+      - sim/basic/tb_I2C_reset_pkg.vhd
+      - sim/basic/tb_I2C_master_pkg.vhd
+      - sim/basic/tb_I2C_slave_pkg.vhd
+      - sim/basic/tb_I2C_tests_pkg.vhd
       - sim/basic/tb_I2C.vhd
     file_type    : vhdlSource-2008
     depend       :
       - bitvis:verification:uvvm
+      # string_pkg list_length / list_item / list_contains (TESTS_LIST)
+      - ">=asylum:utils:pkg:1.10.0"
 
   #---------------------------------------
   sim_multi:
@@ -161,16 +168,16 @@ targets:
       - PRESCALER_RATIO=00011000
 
   #---------------------------------------
-  # Simulation : tb_I2C, one scenario (TEST) per target
+  # Simulation : tb_I2C, one scenario (TESTS_LIST) per target
   #---------------------------------------
   default_sim: &default_sim
     << : *default
-    description     : Default Target for simulation (tb_I2C, TEST=master_write)
+    description     : Default Target for simulation (tb_I2C, TESTS_LIST=master_write)
     filesets_append :
       - sim_basic
     toplevel        : tb_I2C
     parameters      :
-      - TEST=master_write
+      - TESTS_LIST=master_write
     default_tool    : ghdl
     tools :
       ghdl :
@@ -188,7 +195,7 @@ targets:
     << : *default_sim
     description     : Reset values of the registers
     parameters      :
-      - TEST=reset_values
+      - TESTS_LIST=reset_values
 
   #---------------------------------------
   sim_master_write:
@@ -196,7 +203,7 @@ targets:
     << : *default_sim
     description     : DUT master writes to the BFM slave, SCL period (prescaler 4)
     parameters      :
-      - TEST=master_write
+      - TESTS_LIST=master_write
 
   #---------------------------------------
   sim_master_read:
@@ -204,7 +211,7 @@ targets:
     << : *default_sim
     description     : DUT master reads from the BFM slave
     parameters      :
-      - TEST=master_read
+      - TESTS_LIST=master_read
 
   #---------------------------------------
   sim_master_write_read:
@@ -212,7 +219,7 @@ targets:
     << : *default_sim
     description     : DUT master write + repeated START + read (register read)
     parameters      :
-      - TEST=master_write_read
+      - TESTS_LIST=master_write_read
 
   #---------------------------------------
   sim_master_nack:
@@ -220,7 +227,7 @@ targets:
     << : *default_sim
     description     : DUT master writes to an absent slave (NACK)
     parameters      :
-      - TEST=master_nack
+      - TESTS_LIST=master_nack
 
   #---------------------------------------
   sim_master_stretch:
@@ -228,7 +235,7 @@ targets:
     << : *default_sim
     description     : DUT master write with SCL stretched by the bench
     parameters      :
-      - TEST=master_stretch
+      - TESTS_LIST=master_stretch
 
   #---------------------------------------
   sim_master_prescaler:
@@ -236,7 +243,7 @@ targets:
     << : *default_sim
     description     : DUT master SCL period with prescaler 9
     parameters      :
-      - TEST=master_prescaler
+      - TESTS_LIST=master_prescaler
 
   #---------------------------------------
   sim_slave_write:
@@ -244,7 +251,7 @@ targets:
     << : *default_sim
     description     : BFM master writes to the DUT slave
     parameters      :
-      - TEST=slave_write
+      - TESTS_LIST=slave_write
 
   #---------------------------------------
   sim_slave_read:
@@ -252,7 +259,7 @@ targets:
     << : *default_sim
     description     : BFM master reads from the DUT slave
     parameters      :
-      - TEST=slave_read
+      - TESTS_LIST=slave_read
 
   #---------------------------------------
   sim_slave_stretch:
@@ -260,7 +267,7 @@ targets:
     << : *default_sim
     description     : BFM master reads from the DUT slave, TX FIFO empty (clock stretching)
     parameters      :
-      - TEST=slave_stretch
+      - TESTS_LIST=slave_stretch
 
   #---------------------------------------
   sim_slave_write_read:
@@ -268,7 +275,7 @@ targets:
     << : *default_sim
     description     : BFM master write + repeated START + read from the DUT slave
     parameters      :
-      - TEST=slave_write_read
+      - TESTS_LIST=slave_write_read
 
   #---------------------------------------
   sim_slave_wrong_address:
@@ -276,7 +283,7 @@ targets:
     << : *default_sim
     description     : BFM master addresses an other slave (NACK)
     parameters      :
-      - TEST=slave_wrong_address
+      - TESTS_LIST=slave_wrong_address
 
   #---------------------------------------
   sim_slave_disabled:
@@ -284,7 +291,7 @@ targets:
     << : *default_sim
     description     : BFM master addresses a disabled slave (NACK)
     parameters      :
-      - TEST=slave_disabled
+      - TESTS_LIST=slave_disabled
 
   #---------------------------------------
   sim_disabled:
@@ -292,7 +299,7 @@ targets:
     << : *default_sim
     description     : BFM master addresses a disabled I2C (NACK, pads released)
     parameters      :
-      - TEST=disabled
+      - TESTS_LIST=disabled
 
   #---------------------------------------
   # Simulation : tb_I2C_multi, one master and NB_SLAVE slaves
@@ -323,10 +330,10 @@ parameters :
   #---------------------------------------
   # Generics of the testbenches (sim_*)
   #---------------------------------------
-  TEST :
-    description : Scenario of tb_I2C (see sim/basic/tb_I2C.vhd)
+  TESTS_LIST :
+    description : Scenarios of tb_I2C run in sequence, separated by ',' (names in sim/basic/tb_I2C_tests_pkg.vhd), empty = build only
     datatype    : str
-    default     : master_write
+    default     : ""
     paramtype   : generic
 
   NB_SLAVE :
