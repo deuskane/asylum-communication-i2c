@@ -6,13 +6,13 @@
     <IP>.core (VLNV, targets, depends), mk/targets.txt, sim/, syn/, esw/.
   Sections, in this order:
     badges / title + one-line pitch / Overview / Features / Block Diagram /
-    Getting Started / Hardware Interfaces / Configuration /
+    Getting Started / Hardware Interfaces / Configuration / Resources /
     Theory of Operation / Registers / Programmer's Guide /
     Design Verification / Dependencies and Related IPs / License
   Rules:
     - English, short and factual: every statement backed by the sources.
     - No VLNV line: the version badge shows it.
-    - Badges: first line version, license; second line CI, lint, sim.
+    - Badges: first line version, license; second line CI, lint, sim, syn.
     - Block diagram and FSM: pages Overview and FSM of doc/<NAME>.drawio, exported to
       doc/<NAME>-Overview.png and doc/<NAME>-FSM.png (make -C doc).
     - Timing diagrams: WaveDrom source doc/<NAME>-<what>.json, rendered
@@ -30,6 +30,7 @@
 [![CI](https://github.com/deuskane/asylum-communication-i2c/actions/workflows/ci.yml/badge.svg)](https://github.com/deuskane/asylum-communication-i2c/actions/workflows/ci.yml)
 [![lint](https://img.shields.io/endpoint?url=https%3A%2F%2Fraw.githubusercontent.com%2Fdeuskane%2Fasylum-communication-i2c%2Fbadges%2Flint.json)](https://github.com/deuskane/asylum-communication-i2c/actions/workflows/ci.yml)
 [![sim](https://img.shields.io/endpoint?url=https%3A%2F%2Fraw.githubusercontent.com%2Fdeuskane%2Fasylum-communication-i2c%2Fbadges%2Fsim.json)](https://github.com/deuskane/asylum-communication-i2c/actions/workflows/ci.yml)
+[![syn](https://img.shields.io/endpoint?url=https%3A%2F%2Fraw.githubusercontent.com%2Fdeuskane%2Fasylum-communication-i2c%2Fbadges%2Fsyn.json)](https://github.com/deuskane/asylum-communication-i2c/actions/workflows/ci.yml)
 
 # I2C master / slave
 
@@ -45,12 +46,13 @@ Part of the [Asylum project](https://github.com/deuskane/asylum-project), a coll
 4. [Getting Started](#getting-started)
 5. [Hardware Interfaces](#hardware-interfaces)
 6. [Configuration](#configuration)
-7. [Theory of Operation](#theory-of-operation)
-8. [Registers](#registers)
-9. [Programmer's Guide](#programmers-guide)
-10. [Design Verification](#design-verification)
-11. [Dependencies and Related IPs](#dependencies-and-related-ips)
-12. [License](#license)
+7. [Resources](#resources)
+8. [Theory of Operation](#theory-of-operation)
+9. [Registers](#registers)
+10. [Programmer's Guide](#programmers-guide)
+11. [Design Verification](#design-verification)
+12. [Dependencies and Related IPs](#dependencies-and-related-ips)
+13. [License](#license)
 
 ## Overview
 
@@ -197,6 +199,24 @@ Generics of `sbi_I2C`:
 | `FILENAME_CMD` / `FILENAME_TX` / `FILENAME_RX` | string | `"dump_i2c_cmd.txt"` / `"dump_i2c_tx.txt"` / `"dump_i2c_rx.txt"` | Simulation only: dump files of the accepted commands, sent and received bytes |
 
 The FIFO depths set most of the area of the IP.
+
+## Resources
+
+Figures of the `syn_*` targets (`make nonreg_syn`, see [Targets](#targets)): [syn/sbi_I2C_wrapper.vhd](syn/sbi_I2C_wrapper.vhd) with the generics of each configuration, synthesized by Yosys and its GHDL plugin; the reports are in the build directory of each target. FIFO depths as command / TX / RX.
+
+| Configuration | LUT¹ | FF¹ | BRAM¹ | DSP¹ | Area² (µm²) | kGE³ |
+|---|---|---|---|---|---|---|
+| `syn_default` (master and slave, no FIFO) | 207 | 91 | 0 | 0 | 5014.81 | 1.336 |
+| `syn_sim` (master and slave, FIFOs 4/8/8) | 221 + 20 | 113 | 0 | 0 | 11651.17 | 3.104 |
+| `syn_master_only` (no FIFO) | 103 | 55 | 0 | 0 | 2906.54 | 0.774 |
+| `syn_slave_only` (no FIFO) | 113 | 59 | 0 | 0 | 3115.49 | 0.830 |
+| `syn_fixed_prescaler` (master and slave, no FIFO, prescaler fixed to 24) | 203 | 83 | 0 | 0 | 4600.66 | 1.226 |
+
+¹ Xilinx Artix-7 (LUT6), Yosys 0.33 `synth_xilinx -flatten -noiopad -noclkbuf`, before place and route: an estimate, Vivado may differ. LUT: LUTs as logic + LUTs as memory (`RAM32M`, the FIFOs of `syn_sim`). An `INV` counts as a LUT, unless it only drives flip-flop control pins (clock, clock enable, set, reset), which Vivado absorbs.
+
+² SkyWater sky130 `sky130_fd_sc_hd`, typical corner (tt, 25 °C, 1.80 V), Yosys 0.33 `synth` + `dfflibmap` + `abc -liberty`: standard-cell area only, no timing constraint, no buffering, clock tree or placement; memories become flip-flops (no SRAM macro).
+
+³ Area in thousands of NAND2 gate equivalents (`sky130_fd_sc_hd__nand2_1` = 3.7536 µm²).
 
 ## Theory of Operation
 
@@ -398,10 +418,11 @@ The scenarios are chosen at run time with the generic `TESTS_LIST`: names separa
 | `sim_multi_1` | `tb_I2C_multi` | One master and 1 slave, every scenario (37 checks) |
 | `lint_ghdl` | `asylum.sbi_I2C_wrapper` | GHDL `-Wall` analysis and elaboration of [syn/sbi_I2C_wrapper.vhd](syn/sbi_I2C_wrapper.vhd) |
 | `lint_ghdl_synth_<config>` | `asylum.sbi_I2C_wrapper` | `ghdl --synth` check for 5 generic configurations: `default`, `sim`, `master_only`, `slave_only`, `fixed_prescaler` |
+| `syn_<config>` | `asylum.sbi_I2C_wrapper` | Synthesis with Yosys, Artix-7 and sky130 (see [Resources](#resources)), same 5 configurations as `lint_ghdl_synth_<config>`: `syn_default`, `syn_sim`, `syn_master_only`, `syn_slave_only`, `syn_fixed_prescaler` |
 
 The reference configuration of a testbench (the only one for `tb_I2C`, 3 slaves for `tb_I2C_multi`: the most complete) has a build-only base target and one target per scenario: one CI job per scenario, a failure is isolated. Every other configuration has one target that runs the whole list: the `TEST <i>/<N>` header names a failing scenario. FuseSoC replaces the `parameters` list of an inherited target, so each target repeats the generics of its configuration.
 
-Every `sim_*` and `lint_*` target is a job of the [GitHub CI](https://github.com/deuskane/asylum-communication-i2c/actions/workflows/ci.yml), run in the [asylum-env](https://github.com/deuskane/asylum-ci) image (GHDL, FuseSoC, UVVM). The `sim` and `lint` badges count the passed and failed targets of the last run on `main`.
+Every `sim_*`, `lint_*` and `syn_*` target is a job of the [GitHub CI](https://github.com/deuskane/asylum-communication-i2c/actions/workflows/ci.yml), run in the [asylum-env](https://github.com/deuskane/asylum-ci) image (GHDL, FuseSoC, UVVM, Yosys). The `sim`, `lint` and `syn` badges count the passed and failed targets of the last run on `main`.
 
 ### How to Run
 
@@ -413,6 +434,7 @@ make sim_i2c_master_write        # one scenario, log in log/
 make sim_multi_1                 # every scenario of a configuration
 make nonreg_sim                  # every sim_* target
 make nonreg_lint                 # every lint_* target
+make nonreg_syn                  # every syn_* target (Yosys, figures of Resources)
 make TARGETS_FILTER=^sim_i2c_slave nonreg_sim
 ```
 
@@ -443,6 +465,7 @@ Outside the CI, GHDL writes a waveform `dut.fst`, and `sbi_I2C` writes the dumps
 | `asylum:utils:generators` | [asylum-utils-generators](https://github.com/deuskane/asylum-utils-generators) | regtool (register generator) and the CSR building blocks (`csr_reg`, `csr_ext`, `csr_fifo`) |
 | `asylum:utils:pkg` | [asylum-utils-pkg](https://github.com/deuskane/asylum-utils-pkg) | Common packages (`sbi_pkg`, ...); the testbenches need >= 1.10.0 (`string_pkg` lists of `TESTS_LIST`) |
 | `asylum:target:techmap` | [asylum-target-techmap](https://github.com/deuskane/asylum-target-techmap) | `sync2dffrn` synchronizers of SCL and SDA |
+| `asylum:utils:yosys_synth` | [asylum-utils-generators](https://github.com/deuskane/asylum-utils-generators) | Yosys synthesis of the `syn_*` targets (Artix-7 and sky130) |
 | `bitvis:verification:uvvm` | [UVVM](https://github.com/UVVM/UVVM) | Verification library, SBI and I2C BFMs |
 
 Other communication IPs of Asylum: [SPI](https://github.com/deuskane/asylum-communication-spi), [UART](https://github.com/deuskane/asylum-communication-uart). All the IPs: [asylum-project](https://github.com/deuskane/asylum-project).
