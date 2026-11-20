@@ -17,6 +17,8 @@
 # 2026-10-01  1.3      mrosiere Add log directory and log file for each target
 # 2026-10-04  1.4      mrosiere Add ci_generate target to generate GitHub Actions jobs
 # 2026-11-19  1.5      mrosiere ci_generate : lint_* jobs and badges job
+# 2026-11-20  1.6      mrosiere Add syn type (syn_* targets, Yosys) : nonreg_syn,
+#                               ci_generate syn_* jobs
 #-----------------------------------------------------------------------------
 
 #=============================================================================
@@ -68,9 +70,10 @@ TARGETS_ALL         := $(shell cat $(FILE_TARGETS) | cut -d ':' -f1 | tr -d ' ')
 TARGETS_SIM         := $(shell grep -e ^sim_  $(FILE_TARGETS) | grep -E -e '$(TARGETS_FILTER)' | cut -d ':' -f1 | tr -d ' ')
 TARGETS_EMU         := $(shell grep -e ^emu_  $(FILE_TARGETS) | grep -E -e '$(TARGETS_FILTER)' | cut -d ':' -f1 | tr -d ' ')
 TARGETS_LINT        := $(shell grep -e ^lint_ $(FILE_TARGETS) | grep -E -e '$(TARGETS_FILTER)' | cut -d ':' -f1 | tr -d ' ')
+TARGETS_SYN         := $(shell grep -e ^syn_  $(FILE_TARGETS) | grep -E -e '$(TARGETS_FILTER)' | cut -d ':' -f1 | tr -d ' ')
 
 # Non regression
-NONREG_TYPES        := sim emu lint
+NONREG_TYPES        := sim emu lint syn
 NONREG_STEPS        := setup build run
 NONREG_RULES        := $(foreach type,$(NONREG_TYPES),nonreg_$(type)) 
 NONREG_RULES        += $(foreach type,$(NONREG_TYPES),$(foreach step,$(NONREG_STEPS),nonreg_$(type)_$(step)))
@@ -105,6 +108,10 @@ help : $(FILE_TARGETS)
 	 done
 	@echo "TARGETS_LINT         : All lint & static checks targets (after filter)"
 	@for target in $(TARGETS_LINT); do \
+	 echo "                       * $${target}"; \
+	 done
+	@echo "TARGETS_SYN          : All synthesis targets (after filter)"
+	@for target in $(TARGETS_SYN); do \
 	 echo "                       * $${target}"; \
 	 done
 	@echo "TARGET               : Define specfic Target for Fusesoc"
@@ -207,7 +214,7 @@ $(CI_WORKFLOW) : $(FILE_TARGETS)
 	fi
 
 #--------------------------------------------------------
-# Script of ci_generate : one job per sim_* and lint_* target, then the badges
+# Script of ci_generate : one job per sim_*, lint_* and syn_* target, then the badges
 # job (pass / fail counts published on the badges branch, push on main only)
 define CI_GENERATE_PY
 import sys
@@ -247,7 +254,7 @@ export CI_GENERATE_PY
 # Generate CI jobs between markers only
 ci_generate : $(CI_WORKFLOW) $(FILE_TARGETS)
 #--------------------------------------------------------
-	@python3 -c "$$CI_GENERATE_PY" "$(TARGETS_SIM) $(TARGETS_LINT)" "$<"
+	@python3 -c "$$CI_GENERATE_PY" "$(TARGETS_SIM) $(TARGETS_LINT) $(TARGETS_SYN)" "$<"
 #--------------------------------------------------------
 # Generate nonreg_<type> and nonreg_<type>_<stage> rules
 NONREG_UPPER = $(shell printf '%s' '$(1)' | tr '[:lower:]' '[:upper:]')
