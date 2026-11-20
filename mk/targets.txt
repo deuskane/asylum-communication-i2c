@@ -27,4 +27,9 @@ sim_multi_3_read                : Simulation of one master and 3 slaves sbi_I2C 
 sim_multi_3_stretch             : Simulation of one master and 3 slaves sbi_I2C (tb_I2C_multi) - read with an empty TX FIFO (clock stretching by the slave)
 sim_multi_3_write               : Simulation of one master and 3 slaves sbi_I2C (tb_I2C_multi) - the master writes to each slave
 sim_multi_3_write_read          : Simulation of one master and 3 slaves sbi_I2C (tb_I2C_multi) - write to a slave + repeated START + read from an other slave
+syn_default                     : Synthesis (Artix-7, sky130) of sbi_I2C_wrapper, default generics
+syn_fixed_prescaler             : Synthesis (Artix-7, sky130) of sbi_I2C_wrapper, fixed prescaler
+syn_master_only                 : Synthesis (Artix-7, sky130) of sbi_I2C_wrapper, master only
+syn_sim                         : Synthesis (Artix-7, sky130) of sbi_I2C_wrapper, generics of the sim_* targets
+syn_slave_only                  : Synthesis (Artix-7, sky130) of sbi_I2C_wrapper, slave only (no cmd register)
 

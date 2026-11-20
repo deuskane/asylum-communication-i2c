@@ -147,8 +147,33 @@ jobs:
     with:
       name: lint_ghdl_synth_slave_only
 
+  syn_default:
+    uses: deuskane/asylum-ci/.github/workflows/vhdl-ci.yml@main
+    with:
+      name: syn_default
+
+  syn_fixed_prescaler:
+    uses: deuskane/asylum-ci/.github/workflows/vhdl-ci.yml@main
+    with:
+      name: syn_fixed_prescaler
+
+  syn_master_only:
+    uses: deuskane/asylum-ci/.github/workflows/vhdl-ci.yml@main
+    with:
+      name: syn_master_only
+
+  syn_sim:
+    uses: deuskane/asylum-ci/.github/workflows/vhdl-ci.yml@main
+    with:
+      name: syn_sim
+
+  syn_slave_only:
+    uses: deuskane/asylum-ci/.github/workflows/vhdl-ci.yml@main
+    with:
+      name: syn_slave_only
+
   badges:
-    needs: [sim_i2c, sim_i2c_disabled, sim_i2c_master_nack, sim_i2c_master_prescaler, sim_i2c_master_read, sim_i2c_master_stretch, sim_i2c_master_write, sim_i2c_master_write_read, sim_i2c_reset_values, sim_i2c_slave_disabled, sim_i2c_slave_read, sim_i2c_slave_stretch, sim_i2c_slave_write, sim_i2c_slave_write_read, sim_i2c_slave_wrong_address, sim_multi_1, sim_multi_3, sim_multi_3_nack, sim_multi_3_read, sim_multi_3_stretch, sim_multi_3_write, sim_multi_3_write_read, lint_ghdl, lint_ghdl_synth_default, lint_ghdl_synth_fixed_prescaler, lint_ghdl_synth_master_only, lint_ghdl_synth_sim, lint_ghdl_synth_slave_only]
+    needs: [sim_i2c, sim_i2c_disabled, sim_i2c_master_nack, sim_i2c_master_prescaler, sim_i2c_master_read, sim_i2c_master_stretch, sim_i2c_master_write, sim_i2c_master_write_read, sim_i2c_reset_values, sim_i2c_slave_disabled, sim_i2c_slave_read, sim_i2c_slave_stretch, sim_i2c_slave_write, sim_i2c_slave_write_read, sim_i2c_slave_wrong_address, sim_multi_1, sim_multi_3, sim_multi_3_nack, sim_multi_3_read, sim_multi_3_stretch, sim_multi_3_write, sim_multi_3_write_read, lint_ghdl, lint_ghdl_synth_default, lint_ghdl_synth_fixed_prescaler, lint_ghdl_synth_master_only, lint_ghdl_synth_sim, lint_ghdl_synth_slave_only, syn_default, syn_fixed_prescaler, syn_master_only, syn_sim, syn_slave_only]
     if: always() && github.event_name == 'push' && github.ref == 'refs/heads/main'
     permissions:
       contents: write
