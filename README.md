@@ -206,13 +206,13 @@ Figures of the `syn_*` targets (`make nonreg_syn`, see [Targets](#targets)): [sy
 
 | Configuration | LUT¹ | LUTRAM¹ | FF¹ | CARRY4¹ | MUXF7/F8¹ | BRAM¹ | DSP¹ | Area² (µm²) | kGE³ |
 |---|---|---|---|---|---|---|---|---|---|
-| `syn_default` (master and slave, no FIFO) | 298 | 0 | 91 | 7 | 17 | 0 | 0 | 5014.81 | 1.336 |
-| `syn_sim` (master and slave, FIFOs 4/8/8) | 334 | 20 | 113 | 13 | 20 | 0 | 0 | 11651.17 | 3.104 |
-| `syn_master_only` (no FIFO) | 158 | 0 | 55 | 4 | 10 | 0 | 0 | 2906.54 | 0.774 |
-| `syn_slave_only` (no FIFO) | 172 | 0 | 59 | 3 | 6 | 0 | 0 | 3115.49 | 0.830 |
-| `syn_fixed_prescaler` (master and slave, no FIFO, prescaler fixed to 24) | 286 | 0 | 83 | 7 | 15 | 0 | 0 | 4600.66 | 1.226 |
+| `syn_default` (master and slave, no FIFO) | 207 | 0 | 91 | 7 | 17 | 0 | 0 | 5014.81 | 1.336 |
+| `syn_sim` (master and slave, FIFOs 4/8/8) | 221 | 20 | 113 | 13 | 20 | 0 | 0 | 11651.17 | 3.104 |
+| `syn_master_only` (no FIFO) | 105 | 0 | 55 | 4 | 10 | 0 | 0 | 2906.54 | 0.774 |
+| `syn_slave_only` (no FIFO) | 115 | 0 | 59 | 3 | 6 | 0 | 0 | 3115.49 | 0.830 |
+| `syn_fixed_prescaler` (master and slave, no FIFO, prescaler fixed to 24) | 202 | 0 | 83 | 7 | 15 | 0 | 0 | 4600.66 | 1.226 |
 
-¹ Xilinx Artix-7 (LUT6), Yosys 0.33 `synth_xilinx -flatten -noiopad -noclkbuf`, before place and route: every cell of the netlist is counted, Vivado may differ. An `INV` counts as a `LUT1`: `synth_xilinx` puts one on the reset pin of each flip-flop with the active-low reset. The FIFO storage (`syn_sim`) is in LUTRAM (`RAM32M`), not in BRAM.
+¹ Xilinx Artix-7 (LUT6), Yosys 0.33 `synth_xilinx -flatten -noiopad -noclkbuf`, before place and route: every cell of the netlist is counted, Vivado may differ. Identical cells are merged as a vendor tool does (`opt_merge -share_all`): the inverters of an active-low reset net become one; every remaining cell is counted, an `INV` as a `LUT1`. The FIFO storage (`syn_sim`) is in LUTRAM (`RAM32M`), not in BRAM.
 
 ² SkyWater sky130 `sky130_fd_sc_hd`, typical corner (tt, 25 °C, 1.80 V), Yosys 0.33 `synth` + `dfflibmap` + `abc -liberty`: standard-cell area only, no timing constraint, no buffering, clock tree or placement; the FIFO storage becomes flip-flops (no SRAM macro).
 
